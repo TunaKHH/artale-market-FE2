@@ -13,83 +13,102 @@ import { Header } from "../components/header"
 const mockBroadcasts = [
   {
     id: 1,
-    type: "death",
+    type: "sell",
     player: "DragonSlayer",
-    message: "DragonSlayer died at level 20, killed by Oryx the Mad God",
+    message: "DragonSlayer: 賣 Draconis 換 8 Life",
     timestamp: "2分鐘前",
     server: "USW3",
-    fame: 1250,
-    totalFame: 45000,
+    item: "Draconis",
+    price: "8 Life",
   },
   {
     id: 2,
-    type: "level",
+    type: "buy",
     player: "MagicUser",
-    message: "MagicUser achieved level 20 on Wizard",
+    message: "MagicUser: 收 40 Def 給 1 Life",
     timestamp: "5分鐘前",
     server: "EUW2",
-    class: "Wizard",
+    item: "40 Def",
+    price: "1 Life",
   },
   {
     id: 3,
-    type: "drop",
+    type: "team",
     player: "LootHunter",
-    message: "LootHunter found Draconis",
+    message: "LootHunter: 組隊打 Oryx Castle，需要 Priest",
     timestamp: "8分鐘前",
     server: "USEast",
-    item: "Draconis",
+    dungeon: "Oryx Castle",
+    needClass: "Priest",
   },
   {
     id: 4,
-    type: "guild",
+    type: "other",
     player: "GuildMaster",
-    message: "GuildMaster founded the guild 'Elite Warriors'",
+    message: "GuildMaster: 公會 'Elite Warriors' 招收新成員",
     timestamp: "12分鐘前",
     server: "Asia",
     guild: "Elite Warriors",
   },
   {
     id: 5,
-    type: "death",
+    type: "sell",
     player: "Warrior123",
-    message: "Warrior123 died at level 18, killed by Skull Shrine",
+    message: "Warrior123: 賣 Acclaim 換 4 Life",
     timestamp: "15分鐘前",
     server: "USW3",
-    fame: 890,
-    totalFame: 23000,
+    item: "Acclaim",
+    price: "4 Life",
   },
   {
     id: 6,
-    type: "achievement",
+    type: "buy",
     player: "ProPlayer",
-    message: "ProPlayer completed 'Tunnel Rat' achievement",
+    message: "ProPlayer: 收 Rainbow Potion 給 2 Life",
     timestamp: "20分鐘前",
     server: "EUW2",
-    achievement: "Tunnel Rat",
+    item: "Rainbow Potion",
+    price: "2 Life",
+  },
+  {
+    id: 7,
+    type: "team",
+    player: "TeamLeader",
+    message: "TeamLeader: 組隊刷 Abyss，來 3 個人",
+    timestamp: "25分鐘前",
+    server: "USW3",
+    dungeon: "Abyss",
+    needPlayers: "3",
+  },
+  {
+    id: 8,
+    type: "other",
+    player: "Helper",
+    message: "Helper: 免費給新手裝備，在 Nexus",
+    timestamp: "30分鐘前",
+    server: "EUW2",
+    location: "Nexus",
   },
 ]
 
 const broadcastTypes = [
   { id: "all", name: "全部", count: mockBroadcasts.length },
-  { id: "death", name: "死亡", count: mockBroadcasts.filter((b) => b.type === "death").length },
-  { id: "level", name: "升級", count: mockBroadcasts.filter((b) => b.type === "level").length },
-  { id: "drop", name: "掉落", count: mockBroadcasts.filter((b) => b.type === "drop").length },
-  { id: "guild", name: "公會", count: mockBroadcasts.filter((b) => b.type === "guild").length },
-  { id: "achievement", name: "成就", count: mockBroadcasts.filter((b) => b.type === "achievement").length },
+  { id: "sell", name: "賣", count: mockBroadcasts.filter((b) => b.type === "sell").length },
+  { id: "buy", name: "買", count: mockBroadcasts.filter((b) => b.type === "buy").length },
+  { id: "team", name: "組隊", count: mockBroadcasts.filter((b) => b.type === "team").length },
+  { id: "other", name: "其他", count: mockBroadcasts.filter((b) => b.type === "other").length },
 ]
 
 const getBadgeColor = (type: string) => {
   switch (type) {
-    case "death":
+    case "sell":
       return "destructive"
-    case "level":
+    case "buy":
       return "default"
-    case "drop":
+    case "team":
       return "secondary"
-    case "guild":
+    case "other":
       return "outline"
-    case "achievement":
-      return "default"
     default:
       return "default"
   }
@@ -97,16 +116,14 @@ const getBadgeColor = (type: string) => {
 
 const getBadgeText = (type: string) => {
   switch (type) {
-    case "death":
-      return "死亡"
-    case "level":
-      return "升級"
-    case "drop":
-      return "掉落"
-    case "guild":
-      return "公會"
-    case "achievement":
-      return "成就"
+    case "sell":
+      return "賣"
+    case "buy":
+      return "買"
+    case "team":
+      return "組隊"
+    case "other":
+      return "其他"
     default:
       return type
   }
@@ -137,7 +154,7 @@ export default function BroadcastsPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">廣播訊息</h1>
           <p className="text-gray-600 mb-6">
-            即時顯示遊戲內的重要事件，包括玩家死亡、升級、稀有物品掉落、公會活動等訊息。 目前顯示{" "}
+            即時顯示遊戲內的重要訊息，包括交易、組隊、公會招募等。 目前顯示{" "}
             <span className="font-semibold text-blue-600">{filteredBroadcasts.length}</span> 條廣播訊息。
           </p>
 
@@ -175,9 +192,9 @@ export default function BroadcastsPage() {
 
         {/* Type Tabs */}
         <Tabs value={selectedType} onValueChange={setSelectedType} className="mb-8">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 gap-1">
+          <TabsList className="grid w-full grid-cols-5 gap-1">
             {broadcastTypes.map((type) => (
-              <TabsTrigger key={type.id} value={type.id} className="text-xs px-2 py-1">
+              <TabsTrigger key={type.id} value={type.id} className="text-sm px-3 py-2">
                 {type.name} ({type.count})
               </TabsTrigger>
             ))}
@@ -202,22 +219,28 @@ export default function BroadcastsPage() {
                     <p className="text-gray-900 mb-2">{broadcast.message}</p>
 
                     {/* Additional info based on type */}
-                    {broadcast.type === "death" && broadcast.fame && (
+                    {broadcast.type === "sell" && broadcast.item && broadcast.price && (
                       <div className="text-sm text-gray-600">
-                        獲得聲望: {broadcast.fame} | 總聲望: {broadcast.totalFame}
+                        物品: {broadcast.item} | 價格: {broadcast.price}
                       </div>
                     )}
-                    {broadcast.type === "level" && broadcast.class && (
-                      <div className="text-sm text-gray-600">職業: {broadcast.class}</div>
+                    {broadcast.type === "buy" && broadcast.item && broadcast.price && (
+                      <div className="text-sm text-gray-600">
+                        收購: {broadcast.item} | 出價: {broadcast.price}
+                      </div>
                     )}
-                    {broadcast.type === "drop" && broadcast.item && (
-                      <div className="text-sm text-gray-600">物品: {broadcast.item}</div>
+                    {broadcast.type === "team" && (
+                      <div className="text-sm text-gray-600">
+                        {broadcast.dungeon && `地城: ${broadcast.dungeon}`}
+                        {broadcast.needClass && ` | 需要職業: ${broadcast.needClass}`}
+                        {broadcast.needPlayers && ` | 需要人數: ${broadcast.needPlayers}`}
+                      </div>
                     )}
-                    {broadcast.type === "guild" && broadcast.guild && (
-                      <div className="text-sm text-gray-600">公會: {broadcast.guild}</div>
-                    )}
-                    {broadcast.type === "achievement" && broadcast.achievement && (
-                      <div className="text-sm text-gray-600">成就: {broadcast.achievement}</div>
+                    {broadcast.type === "other" && (
+                      <div className="text-sm text-gray-600">
+                        {broadcast.guild && `公會: ${broadcast.guild}`}
+                        {broadcast.location && `地點: ${broadcast.location}`}
+                      </div>
                     )}
                   </div>
                 </div>
