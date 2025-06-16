@@ -52,9 +52,12 @@ export async function getBroadcasts({
   playerName?: string
   keyword?: string
 } = {}): Promise<BroadcastsResponse> {
+  // 強制限制每頁最多 50 筆，防止過載
+  const limitedPageSize = Math.min(Math.max(pageSize, 1), 50)
+  
   const params = new URLSearchParams({
     page: page.toString(),
-    page_size: pageSize.toString(),
+    page_size: limitedPageSize.toString(),
     hours: hours.toString(),
   })
 
@@ -116,7 +119,7 @@ export async function getPlayerBroadcasts(playerName: string, hours = 24): Promi
   return response.json()
 }
 
-// 搜尋廣播訊息
+// 搜尋廣播訊息（使用一般端點的 keyword 參數）
 export async function searchBroadcasts({
   query,
   messageType,
@@ -130,18 +133,22 @@ export async function searchBroadcasts({
   page?: number
   pageSize?: number
 }): Promise<BroadcastsResponse> {
+  // 強制限制每頁最多 50 筆，防止過載
+  const limitedPageSize = Math.min(Math.max(pageSize, 1), 50)
+  
   const params = new URLSearchParams({
-    q: query,
+    keyword: query, // 改用 keyword 參數
     hours: hours.toString(),
     page: page.toString(),
-    page_size: pageSize.toString(),
+    page_size: limitedPageSize.toString(),
   })
 
   if (messageType && messageType !== 'all') {
     params.append('message_type', messageType)
   }
 
-  const response = await fetch(`${API_BASE_URL}/broadcasts/search?${params}`)
+  // 使用一般端點而非專門的搜尋端點
+  const response = await fetch(`${API_BASE_URL}/broadcasts?${params}`)
   
   if (!response.ok) {
     throw new Error(`搜尋請求失敗: ${response.status} ${response.statusText}`)

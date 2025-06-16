@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Clock, Filter, Search, RefreshCw, AlertCircle, Copy, Check } from "lucide-react"
+import { Clock, Filter, Search, RefreshCw, AlertCircle, Copy, Check, ChevronLeft, ChevronRight } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -162,7 +162,11 @@ export default function BroadcastsPage() {
     error,
     filters,
     updateFilters,
-    refresh
+    refresh,
+    hasNext,
+    hasPrev,
+    currentPage,
+    goToPage
   } = useBroadcasts({
     autoRefresh: true,
     refreshInterval: 30000
@@ -240,24 +244,22 @@ export default function BroadcastsPage() {
                 }}
               />
             </div>
+            
             <div className="flex items-center space-x-2">
               <Filter className="w-4 h-4 text-gray-400" />
               <Select
-                value={filters.server || 'all'}
-                onValueChange={(value) => updateFilters({ server: value })}
+                value={filters.hours?.toString() || '24'}
+                onValueChange={(value) => updateFilters({ hours: parseInt(value) })}
               >
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-28">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">所有伺服器</SelectItem>
-                  {servers
-                    .filter((s) => s !== "all")
-                    .map((server) => (
-                      <SelectItem key={server} value={server}>
-                        {server}
-                      </SelectItem>
-                    ))}
+                  <SelectItem value="1">1小時內</SelectItem>
+                  <SelectItem value="6">6小時內</SelectItem>
+                  <SelectItem value="24">24小時內</SelectItem>
+                  <SelectItem value="72">3天內</SelectItem>
+                  <SelectItem value="168">7天內</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -273,7 +275,7 @@ export default function BroadcastsPage() {
           <TabsList className="grid w-full grid-cols-5 gap-1">
             {broadcastTypes.map((type) => (
               <TabsTrigger key={type.id} value={type.id} className="text-sm px-3 py-2">
-                {type.name} ({type.count})
+                {type.name}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -303,9 +305,9 @@ export default function BroadcastsPage() {
                         {broadcast.player_id && (
                           <span className="text-xs text-gray-400">#{broadcast.player_id}</span>
                         )}
-                        <PlayerCopyButton 
-                          playerName={broadcast.player_name} 
-                          playerId={broadcast.player_id} 
+                        <PlayerCopyButton
+                          playerName={broadcast.player_name}
+                          playerId={broadcast.player_id}
                         />
                       </div>
                       <div className="flex items-center text-sm text-gray-500">
@@ -327,6 +329,45 @@ export default function BroadcastsPage() {
             <p className="text-gray-500">
               {error ? '無法載入廣播訊息' : '找不到符合條件的廣播訊息。'}
             </p>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && (hasNext || hasPrev || totalCount > 0) && (
+          <div className="flex items-center justify-between mt-8">
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={!hasPrev}
+                variant="outline"
+                size="sm"
+                className="flex items-center space-x-1"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>上一頁</span>
+              </Button>
+              
+              <span className="text-sm text-gray-600">
+                第 {currentPage} 頁
+              </span>
+              
+              <Button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={!hasNext}
+                variant="outline"
+                size="sm"
+                className="flex items-center space-x-1"
+              >
+                <span>下一頁</span>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <div className="text-sm text-gray-500">
+              每頁顯示 50 筆，共 {totalCount} 筆
+              {filters.keyword && `「${filters.keyword}」搜尋結果`}
+              {!filters.keyword && '訊息'}
+            </div>
           </div>
         )}
 

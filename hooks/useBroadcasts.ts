@@ -42,19 +42,19 @@ export function useBroadcasts({
       let response: BroadcastsResponse
 
       if (filters.keyword.trim()) {
-        // 使用搜尋 API
+        // 使用搜尋 API，強制限制每頁最多 50 筆
         response = await searchBroadcasts({
           query: filters.keyword,
           messageType: filters.messageType,
           hours: filters.hours,
           page,
-          pageSize: initialPageSize
+          pageSize: Math.min(initialPageSize, 50) // 確保搜尋結果每頁最多 50 筆
         })
       } else {
-        // 使用一般列表 API
+        // 使用一般列表 API，同樣限制每頁最多 50 筆
         response = await getBroadcasts({
           page,
-          pageSize: initialPageSize,
+          pageSize: Math.min(initialPageSize, 50), // 確保一般瀏覽每頁最多 50 筆
           hours: filters.hours,
           messageType: filters.messageType,
           playerName: filters.playerName || undefined
@@ -106,17 +106,28 @@ export function useBroadcasts({
     return () => clearInterval(interval)
   }, [autoRefresh, refreshInterval, refresh])
 
-  // 取得統計資料
+  // 取得統計資料 - 智能統計邏輯
   const getTypeCounts = useCallback(() => {
-    const counts = {
+    // 如果有選擇特定類型篩選，只顯示當前篩選結果的統計
+    if (filters.messageType !== 'all') {
+      return {
+        all: totalCount, // 顯示篩選後的總數
+        sell: filters.messageType === 'sell' ? totalCount : 0,
+        buy: filters.messageType === 'buy' ? totalCount : 0,
+        team: filters.messageType === 'team' ? totalCount : 0,
+        other: filters.messageType === 'other' ? totalCount : 0,
+      }
+    }
+    
+    // 沒有類型篩選時，顯示當前載入資料的統計
+    return {
       all: broadcasts.length,
       sell: broadcasts.filter(b => b.message_type === 'sell').length,
       buy: broadcasts.filter(b => b.message_type === 'buy').length,
       team: broadcasts.filter(b => b.message_type === 'team').length,
       other: broadcasts.filter(b => b.message_type === 'other').length,
     }
-    return counts
-  }, [broadcasts])
+  }, [broadcasts, filters.messageType, totalCount])
 
   return {
     // 資料

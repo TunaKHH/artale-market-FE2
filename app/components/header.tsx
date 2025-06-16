@@ -18,7 +18,7 @@ export function Header() {
           <div className="flex items-center space-x-4">
             <Link href="/" className="flex items-center space-x-2">
               {/* 移除包含 "RE" 文字的 div */}
-              <span className="text-xl font-bold text-gray-900">RealmEye</span>
+              <span className="text-xl font-bold text-gray-900">Artale Love</span>
             </Link>
           </div>
 
