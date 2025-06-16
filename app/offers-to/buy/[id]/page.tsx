@@ -12,7 +12,7 @@ import { Header } from "../../../components/header"
 // Mock data for the specific item
 const itemData = {
   id: 9065,
-  name: "Greater Potion of Defense",
+  name: "高級防禦藥水",
   image: "/placeholder.svg?height=32&width=32",
 }
 
@@ -20,32 +20,32 @@ const itemData = {
 const offers = [
   {
     id: 1,
-    selling: [{ item: "/placeholder.svg?height=24&width=24", quantity: 1, name: "Life Potion" }],
-    buying: [{ item: "/placeholder.svg?height=24&width=24", quantity: 40, name: "Greater Potion of Defense" }],
+    selling: [{ item: "/placeholder.svg?height=24&width=24", quantity: 1, name: "生命藥水" }],
+    buying: [{ item: "/placeholder.svg?height=24&width=24", quantity: 40, name: "高級防禦藥水" }],
     quantity: 1,
-    addedTime: "~2 hours ago",
-    playerName: "PotionBuyer",
-    lastSeen: "~2 hours ago",
+    addedTime: "~2小時前",
+    playerName: "藥水收購者",
+    lastSeen: "~2小時前",
     server: "USW3",
   },
   {
     id: 2,
-    selling: [{ item: "/placeholder.svg?height=24&width=24", quantity: 1, name: "Mana Potion" }],
-    buying: [{ item: "/placeholder.svg?height=24&width=24", quantity: 8, name: "Greater Potion of Defense" }],
+    selling: [{ item: "/placeholder.svg?height=24&width=24", quantity: 1, name: "魔力藥水" }],
+    buying: [{ item: "/placeholder.svg?height=24&width=24", quantity: 8, name: "高級防禦藥水" }],
     quantity: 1,
-    addedTime: "~4 hours ago",
-    playerName: "DefenseCollector",
-    lastSeen: "~4 hours ago",
+    addedTime: "~4小時前",
+    playerName: "防禦收集者",
+    lastSeen: "~4小時前",
     server: "EUW2",
   },
   {
     id: 3,
-    selling: [{ item: "/placeholder.svg?height=24&width=24", quantity: 2, name: "Rainbow Potion" }],
-    buying: [{ item: "/placeholder.svg?height=24&width=24", quantity: 50, name: "Greater Potion of Defense" }],
+    selling: [{ item: "/placeholder.svg?height=24&width=24", quantity: 2, name: "彩虹藥水" }],
+    buying: [{ item: "/placeholder.svg?height=24&width=24", quantity: 50, name: "高級防禦藥水" }],
     quantity: 1,
-    addedTime: "~6 hours ago",
-    playerName: "BulkTrader",
-    lastSeen: "~6 hours ago",
+    addedTime: "~6小時前",
+    playerName: "大宗交易者",
+    lastSeen: "~6小時前",
     server: "USEast",
   },
 ]
@@ -67,43 +67,40 @@ export default function BuyOffersPage({ params }: { params: { id: string } }) {
           <Link href="/trading">
             <Button variant="outline" size="sm">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Trading
+              返回交易市場
             </Button>
           </Link>
         </div>
 
         {/* Title and Description */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Offers</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">報價列表</h1>
           <p className="text-gray-600 mb-6">
-            There are <span className="font-semibold">{totalOffers}</span> offers made by{" "}
-            <span className="font-semibold">{uniquePlayers}</span> RotMG players in the past two days who are{" "}
-            <span className="font-semibold">buying {itemData.name}</span> on RealmEye.
+            過去兩天內有 <span className="font-semibold">{totalOffers}</span> 個報價，來自{" "}
+            <span className="font-semibold">{uniquePlayers}</span> 位 RotMG 玩家，他們正在{" "}
+            <span className="font-semibold">收購 {itemData.name}</span>。
           </p>
 
           {/* Instructions */}
           <div className="space-y-2 text-gray-600 mb-6">
             <div className="flex items-start space-x-2">
               <span className="text-gray-400">•</span>
-              <p>
-                If you've found some offers you are interested in, then contact the players in-game, or send them a
-                message through RealmEye, if they're not online.
-              </p>
+              <p>如果您找到感興趣的報價，可以在遊戲中聯絡玩家，或者如果他們不在線上，可以透過 RealmEye 發送訊息。</p>
             </div>
             <div className="flex items-start space-x-2">
               <span className="text-gray-400">•</span>
               <p>
-                If you haven't found among the{" "}
+                如果您在{" "}
                 <Link href="/trading" className="text-blue-600 hover:underline">
-                  current offers
+                  當前報價
                 </Link>{" "}
-                what you are looking for, just{" "}
+                中沒有找到您要的物品，請{" "}
                 <Link href="#" className="text-blue-600 hover:underline font-semibold">
-                  post an offer
-                </Link>{" "}
-                for it!{" "}
+                  發布報價
+                </Link>
+                ！{" "}
                 <Link href="#" className="text-blue-600 hover:underline">
-                  Click here to see how!
+                  點此了解如何操作！
                 </Link>
               </p>
             </div>
@@ -111,29 +108,29 @@ export default function BuyOffersPage({ params }: { params: { id: string } }) {
 
           {/* Filter Section */}
           <div className="flex items-center space-x-3 mb-6">
-            <span className="text-gray-700">Who is</span>
+            <span className="text-gray-700">誰在</span>
             <Select value={whoFilter} onValueChange={setWhoFilter}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="selling">Selling</SelectItem>
-                <SelectItem value="buying">Buying</SelectItem>
+                <SelectItem value="selling">出售</SelectItem>
+                <SelectItem value="buying">收購</SelectItem>
               </SelectContent>
             </Select>
             <img src={itemData.image || "/placeholder.svg"} alt={itemData.name} className="w-8 h-8" />
-            <span className="text-gray-700">for</span>
+            <span className="text-gray-700">換取</span>
             <Select value={forFilter} onValueChange={setForFilter}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="anything">Anything</SelectItem>
-                <SelectItem value="life">Life Potion</SelectItem>
-                <SelectItem value="mana">Mana Potion</SelectItem>
+                <SelectItem value="anything">任何物品</SelectItem>
+                <SelectItem value="life">生命藥水</SelectItem>
+                <SelectItem value="mana">魔力藥水</SelectItem>
               </SelectContent>
             </Select>
-            <span className="text-gray-700">?</span>
+            <span className="text-gray-700">？</span>
           </div>
         </div>
 
@@ -143,13 +140,13 @@ export default function BuyOffersPage({ params }: { params: { id: string } }) {
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50">
-                  <TableHead className="font-semibold">Selling</TableHead>
-                  <TableHead className="font-semibold">Buying</TableHead>
-                  <TableHead className="font-semibold text-center">Qty.</TableHead>
-                  <TableHead className="font-semibold">Added</TableHead>
-                  <TableHead className="font-semibold">Offer by</TableHead>
-                  <TableHead className="font-semibold">Last seen</TableHead>
-                  <TableHead className="font-semibold">Srv.</TableHead>
+                  <TableHead className="font-semibold">出售</TableHead>
+                  <TableHead className="font-semibold">收購</TableHead>
+                  <TableHead className="font-semibold text-center">數量</TableHead>
+                  <TableHead className="font-semibold">發布時間</TableHead>
+                  <TableHead className="font-semibold">發布者</TableHead>
+                  <TableHead className="font-semibold">最後上線</TableHead>
+                  <TableHead className="font-semibold">伺服器</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -206,10 +203,10 @@ export default function BuyOffersPage({ params }: { params: { id: string } }) {
         <div className="mt-6 flex justify-center space-x-4">
           <Button className="bg-blue-600 hover:bg-blue-700">
             <MessageCircle className="w-4 h-4 mr-2" />
-            Post Your Own Offer
+            發布您的報價
           </Button>
           <Button variant="outline">
-            <Link href={`/offers-to/sell/${params.id}`}>View Sell Offers</Link>
+            <Link href={`/offers-to/sell/${params.id}`}>查看出售報價</Link>
           </Button>
         </div>
       </main>

@@ -6,9 +6,9 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "RealmEye Clone - Game Trading Platform",
-  description: "A comprehensive trading platform for game items, player statistics, and community features",
-    generator: 'v0.dev'
+  title: "RealmEye 複製版 - 遊戲物品交易平台",
+  description: "全面的遊戲物品交易平台，提供玩家統計和社群功能",
+  generator: "v0.dev",
 }
 
 export default function RootLayout({
