@@ -1,103 +1,123 @@
 "use client"
 
-import { useState } from "react"
-import { Clock, Filter, Search } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Clock, Filter, Search, RefreshCw, AlertCircle, Copy, Check } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Header } from "../components/header"
+import { useBroadcasts } from "@/hooks/useBroadcasts"
+import type { BroadcastMessage } from "@/lib/api"
 
-// Mock data for broadcasts
-const mockBroadcasts = [
-  {
-    id: 1,
-    type: "sell",
-    player: "DragonSlayer",
-    message: "DragonSlayer: 賣 Draconis 換 8 Life",
-    timestamp: "2分鐘前",
-    server: "USW3",
-    item: "Draconis",
-    price: "8 Life",
-  },
-  {
-    id: 2,
-    type: "buy",
-    player: "MagicUser",
-    message: "MagicUser: 收 40 Def 給 1 Life",
-    timestamp: "5分鐘前",
-    server: "EUW2",
-    item: "40 Def",
-    price: "1 Life",
-  },
-  {
-    id: 3,
-    type: "team",
-    player: "LootHunter",
-    message: "LootHunter: 組隊打 Oryx Castle，需要 Priest",
-    timestamp: "8分鐘前",
-    server: "USEast",
-    dungeon: "Oryx Castle",
-    needClass: "Priest",
-  },
-  {
-    id: 4,
-    type: "other",
-    player: "GuildMaster",
-    message: "GuildMaster: 公會 'Elite Warriors' 招收新成員",
-    timestamp: "12分鐘前",
-    server: "Asia",
-    guild: "Elite Warriors",
-  },
-  {
-    id: 5,
-    type: "sell",
-    player: "Warrior123",
-    message: "Warrior123: 賣 Acclaim 換 4 Life",
-    timestamp: "15分鐘前",
-    server: "USW3",
-    item: "Acclaim",
-    price: "4 Life",
-  },
-  {
-    id: 6,
-    type: "buy",
-    player: "ProPlayer",
-    message: "ProPlayer: 收 Rainbow Potion 給 2 Life",
-    timestamp: "20分鐘前",
-    server: "EUW2",
-    item: "Rainbow Potion",
-    price: "2 Life",
-  },
-  {
-    id: 7,
-    type: "team",
-    player: "TeamLeader",
-    message: "TeamLeader: 組隊刷 Abyss，來 3 個人",
-    timestamp: "25分鐘前",
-    server: "USW3",
-    dungeon: "Abyss",
-    needPlayers: "3",
-  },
-  {
-    id: 8,
-    type: "other",
-    player: "Helper",
-    message: "Helper: 免費給新手裝備，在 Nexus",
-    timestamp: "30分鐘前",
-    server: "EUW2",
-    location: "Nexus",
-  },
-]
+// 時間格式化組件 - 避免 hydration 錯誤
+const TimeAgo = ({ timestamp }: { timestamp: string }) => {
+  const [timeAgo, setTimeAgo] = useState<string>('')
+  const [fullTimestamp, setFullTimestamp] = useState<string>('')
+  const [mounted, setMounted] = useState(false)
 
-const broadcastTypes = [
-  { id: "all", name: "全部", count: mockBroadcasts.length },
-  { id: "sell", name: "賣", count: mockBroadcasts.filter((b) => b.type === "sell").length },
-  { id: "buy", name: "買", count: mockBroadcasts.filter((b) => b.type === "buy").length },
-  { id: "team", name: "組隊", count: mockBroadcasts.filter((b) => b.type === "team").length },
-  { id: "other", name: "其他", count: mockBroadcasts.filter((b) => b.type === "other").length },
-]
+  useEffect(() => {
+    setMounted(true)
+
+    const updateTimeAgo = () => {
+      const date = new Date(timestamp)
+      const now = new Date()
+      const diff = now.getTime() - date.getTime()
+
+      const minutes = Math.floor(diff / 60000)
+      const hours = Math.floor(diff / 3600000)
+      const days = Math.floor(diff / 86400000)
+
+      if (minutes < 1) setTimeAgo('剛剛')
+      else if (minutes < 60) setTimeAgo(`${minutes}分鐘前`)
+      else if (hours < 24) setTimeAgo(`${hours}小時前`)
+      else setTimeAgo(`${days}天前`)
+
+      // 設定完整的時間戳顯示 (台灣時間格式)
+      setFullTimestamp(date.toLocaleString('zh-TW', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }))
+    }
+
+    updateTimeAgo()
+    // 每分鐘更新一次
+    const interval = setInterval(updateTimeAgo, 60000)
+
+    return () => clearInterval(interval)
+  }, [timestamp])
+
+  // 避免 hydration 錯誤，在客戶端掛載前顯示靜態內容
+  if (!mounted) {
+    return <span>載入中...</span>
+  }
+
+  return (
+    <span
+      title={fullTimestamp}
+      className="cursor-help border-b border-dotted border-gray-400 hover:border-gray-600"
+    >
+      {timeAgo}
+    </span>
+  )
+}
+
+// 玩家複製按鈕組件
+const PlayerCopyButton = ({ playerName, playerId }: { playerName: string, playerId?: string }) => {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    try {
+      const textToCopy = playerId ? `${playerName}#${playerId}` : playerName
+      await navigator.clipboard.writeText(textToCopy)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000) // 2秒後恢復原狀
+    } catch (err) {
+      console.error('複製失敗:', err)
+    }
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="inline-flex items-center justify-center w-4 h-4 ml-1 text-gray-400 hover:text-gray-600 transition-colors"
+      title={`複製 ${playerId ? `${playerName}#${playerId}` : playerName}`}
+    >
+      {copied ? (
+        <Check className="w-3 h-3 text-green-500" />
+      ) : (
+        <Copy className="w-3 h-3" />
+      )}
+    </button>
+  )
+}
+
+// 載入中骨架組件
+const BroadcastSkeleton = () => (
+  <Card className="mb-4">
+    <CardContent className="p-4">
+      <div className="flex items-start justify-between">
+        <div className="flex-1 space-y-2">
+          <div className="flex items-center space-x-2">
+            <div className="h-5 w-12 bg-gray-200 rounded animate-pulse" />
+            <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
+            <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+          </div>
+          <div className="h-4 w-full bg-gray-200 rounded animate-pulse" />
+          <div className="h-3 w-3/4 bg-gray-200 rounded animate-pulse" />
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+)
 
 const getBadgeColor = (type: string) => {
   switch (type) {
@@ -130,20 +150,45 @@ const getBadgeText = (type: string) => {
 }
 
 export default function BroadcastsPage() {
-  const [selectedType, setSelectedType] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
-  const [serverFilter, setServerFilter] = useState("all")
+  const [searchInput, setSearchInput] = useState("")
 
-  const filteredBroadcasts = mockBroadcasts.filter((broadcast) => {
-    const matchesType = selectedType === "all" || broadcast.type === selectedType
-    const matchesSearch =
-      broadcast.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      broadcast.player.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesServer = serverFilter === "all" || broadcast.server === serverFilter
-    return matchesType && matchesSearch && matchesServer
+  // 使用自定義 Hook 取得廣播資料
+  const {
+    broadcasts,
+    totalCount,
+    typeCounts,
+    loading,
+    error,
+    filters,
+    updateFilters,
+    refresh
+  } = useBroadcasts({
+    autoRefresh: true,
+    refreshInterval: 30000
   })
 
-  const servers = ["all", ...Array.from(new Set(mockBroadcasts.map((b) => b.server)))]
+  // 處理搜尋 (延遲更新)
+  const handleSearch = (value: string) => {
+    setSearchInput(value)
+    // 延遲500ms更新實際搜尋，避免頻繁API調用
+    const timer = setTimeout(() => {
+      updateFilters({ keyword: value })
+    }, 500)
+    return () => clearTimeout(timer)
+  }
+
+  // 取得廣播類型選項
+  const broadcastTypes = [
+    { id: "all", name: "全部", count: typeCounts.all },
+    { id: "sell", name: "賣", count: typeCounts.sell },
+    { id: "buy", name: "買", count: typeCounts.buy },
+    { id: "team", name: "組隊", count: typeCounts.team },
+    { id: "other", name: "其他", count: typeCounts.other },
+  ]
+
+  // 獲取可用的伺服器列表 (從當前廣播中提取)
+  const servers = ["all", ...Array.from(new Set(broadcasts.map((b) => b.channel)))]
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -152,11 +197,34 @@ export default function BroadcastsPage() {
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Title and Description */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">廣播訊息</h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold text-gray-900">廣播訊息</h1>
+            <Button
+              onClick={refresh}
+              variant="outline"
+              size="sm"
+              disabled={loading}
+              className="flex items-center space-x-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <span>刷新</span>
+            </Button>
+          </div>
+
           <p className="text-gray-600 mb-6">
             即時顯示遊戲內的重要訊息，包括交易、組隊、公會招募等。 目前顯示{" "}
-            <span className="font-semibold text-blue-600">{filteredBroadcasts.length}</span> 條廣播訊息。
+            <span className="font-semibold text-blue-600">{totalCount}</span> 條廣播訊息。
           </p>
+
+          {/* Error Alert */}
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {error}
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -165,13 +233,19 @@ export default function BroadcastsPage() {
               <Input
                 placeholder="搜尋玩家或訊息..."
                 className="max-w-md"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => {
+                  setSearchInput(e.target.value)
+                  handleSearch(e.target.value)
+                }}
               />
             </div>
             <div className="flex items-center space-x-2">
               <Filter className="w-4 h-4 text-gray-400" />
-              <Select value={serverFilter} onValueChange={setServerFilter}>
+              <Select
+                value={filters.server || 'all'}
+                onValueChange={(value) => updateFilters({ server: value })}
+              >
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
@@ -191,7 +265,11 @@ export default function BroadcastsPage() {
         </div>
 
         {/* Type Tabs */}
-        <Tabs value={selectedType} onValueChange={setSelectedType} className="mb-8">
+        <Tabs
+          value={filters.messageType}
+          onValueChange={(value) => updateFilters({ messageType: value })}
+          className="mb-8"
+        >
           <TabsList className="grid w-full grid-cols-5 gap-1">
             {broadcastTypes.map((type) => (
               <TabsTrigger key={type.id} value={type.id} className="text-sm px-3 py-2">
@@ -203,45 +281,39 @@ export default function BroadcastsPage() {
 
         {/* Broadcasts List */}
         <div className="space-y-4">
-          {filteredBroadcasts.map((broadcast) => (
+          {loading && (
+            // 顯示載入中骨架
+            Array.from({ length: 5 }).map((_, index) => (
+              <BroadcastSkeleton key={index} />
+            ))
+          )}
+
+          {!loading && broadcasts.map((broadcast) => (
             <Card key={broadcast.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-2">
-                      <Badge variant={getBadgeColor(broadcast.type) as any}>{getBadgeText(broadcast.type)}</Badge>
-                      <span className="text-sm text-gray-500">{broadcast.server}</span>
+                      <Badge variant={getBadgeColor(broadcast.message_type) as any}>
+                        {getBadgeText(broadcast.message_type)}
+                      </Badge>
+                      <span className="text-sm text-gray-500">{broadcast.channel}</span>
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-blue-600">{broadcast.player_name}</span>
+                        {broadcast.player_id && (
+                          <span className="text-xs text-gray-400">#{broadcast.player_id}</span>
+                        )}
+                        <PlayerCopyButton 
+                          playerName={broadcast.player_name} 
+                          playerId={broadcast.player_id} 
+                        />
+                      </div>
                       <div className="flex items-center text-sm text-gray-500">
                         <Clock className="w-3 h-3 mr-1" />
-                        {broadcast.timestamp}
+                        <TimeAgo timestamp={broadcast.timestamp} />
                       </div>
                     </div>
-                    <p className="text-gray-900 mb-2">{broadcast.message}</p>
-
-                    {/* Additional info based on type */}
-                    {broadcast.type === "sell" && broadcast.item && broadcast.price && (
-                      <div className="text-sm text-gray-600">
-                        物品: {broadcast.item} | 價格: {broadcast.price}
-                      </div>
-                    )}
-                    {broadcast.type === "buy" && broadcast.item && broadcast.price && (
-                      <div className="text-sm text-gray-600">
-                        收購: {broadcast.item} | 出價: {broadcast.price}
-                      </div>
-                    )}
-                    {broadcast.type === "team" && (
-                      <div className="text-sm text-gray-600">
-                        {broadcast.dungeon && `地城: ${broadcast.dungeon}`}
-                        {broadcast.needClass && ` | 需要職業: ${broadcast.needClass}`}
-                        {broadcast.needPlayers && ` | 需要人數: ${broadcast.needPlayers}`}
-                      </div>
-                    )}
-                    {broadcast.type === "other" && (
-                      <div className="text-sm text-gray-600">
-                        {broadcast.guild && `公會: ${broadcast.guild}`}
-                        {broadcast.location && `地點: ${broadcast.location}`}
-                      </div>
-                    )}
+                    <p className="text-gray-900 mb-2">{broadcast.content}</p>
                   </div>
                 </div>
               </CardContent>
@@ -250,9 +322,11 @@ export default function BroadcastsPage() {
         </div>
 
         {/* Empty state */}
-        {filteredBroadcasts.length === 0 && (
+        {!loading && broadcasts.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500">找不到符合條件的廣播訊息。</p>
+            <p className="text-gray-500">
+              {error ? '無法載入廣播訊息' : '找不到符合條件的廣播訊息。'}
+            </p>
           </div>
         )}
 

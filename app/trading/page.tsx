@@ -19,7 +19,7 @@ const mockItems = [
     sellOffers: 5,
     buyOffers: 3,
     price: 10,
-    image: "/placeholder.svg?height=32&width=32",
+    image: "/10.png",
   },
   {
     id: 9071,
@@ -28,7 +28,7 @@ const mockItems = [
     sellOffers: 8,
     buyOffers: 2,
     price: 12,
-    image: "/placeholder.svg?height=32&width=32",
+    image: "/10.png",
   },
   {
     id: 9072,
@@ -37,7 +37,7 @@ const mockItems = [
     sellOffers: 2,
     buyOffers: 1,
     price: 150,
-    image: "/placeholder.svg?height=32&width=32",
+    image: "/10.png",
   },
   {
     id: 9073,
@@ -46,7 +46,7 @@ const mockItems = [
     sellOffers: 3,
     buyOffers: 4,
     price: 200,
-    image: "/placeholder.svg?height=32&width=32",
+    image: "/10.png",
   },
   {
     id: 9074,
@@ -55,7 +55,7 @@ const mockItems = [
     sellOffers: 6,
     buyOffers: 2,
     price: 80,
-    image: "/placeholder.svg?height=32&width=32",
+    image: "/10.png",
   },
   {
     id: 9075,
@@ -64,7 +64,7 @@ const mockItems = [
     sellOffers: 1,
     buyOffers: 5,
     price: 300,
-    image: "/placeholder.svg?height=32&width=32",
+    image: "/10.png",
   },
   {
     id: 9076,
@@ -73,7 +73,7 @@ const mockItems = [
     sellOffers: 4,
     buyOffers: 1,
     price: 50,
-    image: "/placeholder.svg?height=32&width=32",
+    image: "/10.png",
   },
   {
     id: 9077,
@@ -82,7 +82,7 @@ const mockItems = [
     sellOffers: 2,
     buyOffers: 3,
     price: 100,
-    image: "/placeholder.svg?height=32&width=32",
+    image: "/10.png",
   },
 ]
 
