@@ -27,6 +27,9 @@ export function Header() {
             <Link href="/trading" className="text-blue-600 font-medium">
               交易市場
             </Link>
+            <Link href="/broadcasts" className="text-gray-700 hover:text-blue-600 font-medium">
+              廣播訊息
+            </Link>
           </nav>
 
           {/* Right side */}
@@ -49,6 +52,9 @@ export function Header() {
                   <nav className="flex flex-col space-y-4">
                     <Link href="/trading" className="text-blue-600 font-medium">
                       交易市場
+                    </Link>
+                    <Link href="/broadcasts" className="text-gray-700 hover:text-blue-600 font-medium">
+                      廣播訊息
                     </Link>
                   </nav>
                   <Button variant="outline" className="w-full">

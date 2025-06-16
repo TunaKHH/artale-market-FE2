@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, MessageCircle } from "lucide-react"
+import { ArrowLeft, MessageCircle, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -191,6 +191,7 @@ export default function SellOffersPage({ params }: { params: { id: string } }) {
                   <TableHead className="font-semibold">發布者</TableHead>
                   <TableHead className="font-semibold">最後上線</TableHead>
                   <TableHead className="font-semibold">伺服器</TableHead>
+                  <TableHead className="font-semibold">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -236,6 +237,20 @@ export default function SellOffersPage({ params }: { params: { id: string } }) {
                     </TableCell>
                     <TableCell className="text-gray-600">{offer.lastSeen}</TableCell>
                     <TableCell className="text-gray-600">{offer.server}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const offerText = `出售: ${offer.selling.map((item) => `${item.name} x${item.quantity}`).join(", ")} | 收購: ${offer.buying.map((item) => `${item.name} x${item.quantity}`).join(", ")}`
+                          navigator.clipboard.writeText(offerText)
+                          alert("已複製報價資訊！您可以使用此資訊發布相似的報價。")
+                        }}
+                        title="複製此報價"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
