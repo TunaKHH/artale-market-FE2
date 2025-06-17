@@ -8,7 +8,7 @@ export default function HomePage() {
   const router = useRouter()
 
   useEffect(() => {
-    router.push("/trading")
+    router.push("/broadcasts")
   }, [router])
 
   return (
@@ -16,7 +16,7 @@ export default function HomePage() {
       <Header />
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center">
-          <p className="text-gray-600">正在跳轉至交易市場...</p>
+          <p className="text-gray-600">正在跳轉至廣播訊息...</p>
         </div>
       </main>
     </div>

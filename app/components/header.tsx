@@ -24,9 +24,9 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/trading" className="text-blue-600 font-medium">
+            {/* <Link href="/trading" className="text-blue-600 font-medium">
               交易市場
-            </Link>
+            </Link> */}
             <Link href="/broadcasts" className="text-gray-700 hover:text-blue-600 font-medium">
               廣播訊息
             </Link>
@@ -50,9 +50,9 @@ export function Header() {
                 <div className="flex flex-col space-y-4 mt-8">
                   <Input placeholder="搜尋..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                   <nav className="flex flex-col space-y-4">
-                    <Link href="/trading" className="text-blue-600 font-medium">
+                    {/* <Link href="/trading" className="text-blue-600 font-medium">
                       交易市場
-                    </Link>
+                    </Link> */}
                     <Link href="/broadcasts" className="text-gray-700 hover:text-blue-600 font-medium">
                       廣播訊息
                     </Link>

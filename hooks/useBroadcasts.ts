@@ -4,14 +4,12 @@ import { getBroadcasts, searchBroadcasts, type BroadcastMessage, type Broadcasts
 interface UseBroadcastsOptions {
   autoRefresh?: boolean
   refreshInterval?: number
-  initialHours?: number
   initialPageSize?: number
 }
 
 export function useBroadcasts({
   autoRefresh = true,
   refreshInterval = 30000, // 30秒
-  initialHours = 24,
   initialPageSize = 50
 }: UseBroadcastsOptions = {}) {
   const [broadcasts, setBroadcasts] = useState<BroadcastMessage[]>([])
@@ -21,11 +19,11 @@ export function useBroadcasts({
   const [hasNext, setHasNext] = useState(false)
   const [hasPrev, setHasPrev] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [mounted, setMounted] = useState(false)
 
   // 篩選狀態
   const [filters, setFilters] = useState({
     messageType: 'all',
-    hours: initialHours,
     keyword: '',
     playerName: '',
     server: 'all'
@@ -46,7 +44,6 @@ export function useBroadcasts({
         response = await searchBroadcasts({
           query: filters.keyword,
           messageType: filters.messageType,
-          hours: filters.hours,
           page,
           pageSize: Math.min(initialPageSize, 50) // 確保搜尋結果每頁最多 50 筆
         })
@@ -55,7 +52,6 @@ export function useBroadcasts({
         response = await getBroadcasts({
           page,
           pageSize: Math.min(initialPageSize, 50), // 確保一般瀏覽每頁最多 50 筆
-          hours: filters.hours,
           messageType: filters.messageType,
           playerName: filters.playerName || undefined
         })
@@ -90,21 +86,28 @@ export function useBroadcasts({
     loadBroadcasts(page)
   }, [loadBroadcasts])
 
+  // 客戶端掛載
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   // 初始載入和篩選變更時重新載入
   useEffect(() => {
-    loadBroadcasts(1)
-  }, [loadBroadcasts])
+    if (mounted) {
+      loadBroadcasts(1)
+    }
+  }, [loadBroadcasts, mounted])
 
   // 自動刷新
   useEffect(() => {
-    if (!autoRefresh) return
+    if (!autoRefresh || !mounted) return
 
     const interval = setInterval(() => {
       refresh()
     }, refreshInterval)
 
     return () => clearInterval(interval)
-  }, [autoRefresh, refreshInterval, refresh])
+  }, [autoRefresh, refreshInterval, refresh, mounted])
 
   // 取得統計資料 - 智能統計邏輯
   const getTypeCounts = useCallback(() => {
@@ -131,16 +134,16 @@ export function useBroadcasts({
 
   return {
     // 資料
-    broadcasts,
-    totalCount,
-    typeCounts: getTypeCounts(),
+    broadcasts: mounted ? broadcasts : [],
+    totalCount: mounted ? totalCount : 0,
+    typeCounts: mounted ? getTypeCounts() : { all: 0, sell: 0, buy: 0, team: 0, other: 0 },
 
     // 狀態
-    loading,
-    error,
-    hasNext,
-    hasPrev,
-    currentPage,
+    loading: mounted ? loading : true,
+    error: mounted ? error : null,
+    hasNext: mounted ? hasNext : false,
+    hasPrev: mounted ? hasPrev : false,
+    currentPage: mounted ? currentPage : 1,
 
     // 篩選
     filters,

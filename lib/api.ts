@@ -40,14 +40,12 @@ export interface BroadcastsResponse {
 export async function getBroadcasts({
   page = 1,
   pageSize = 50,
-  hours = 24,
   messageType,
   playerName,
   keyword
 }: {
   page?: number
   pageSize?: number
-  hours?: number
   messageType?: string
   playerName?: string
   keyword?: string
@@ -58,7 +56,6 @@ export async function getBroadcasts({
   const params = new URLSearchParams({
     page: page.toString(),
     page_size: limitedPageSize.toString(),
-    hours: hours.toString(),
   })
 
   if (messageType && messageType !== 'all') {
@@ -123,13 +120,11 @@ export async function getPlayerBroadcasts(playerName: string, hours = 24): Promi
 export async function searchBroadcasts({
   query,
   messageType,
-  hours = 24,
   page = 1,
   pageSize = 50
 }: {
   query: string
   messageType?: string
-  hours?: number
   page?: number
   pageSize?: number
 }): Promise<BroadcastsResponse> {
@@ -138,7 +133,6 @@ export async function searchBroadcasts({
   
   const params = new URLSearchParams({
     keyword: query, // 改用 keyword 參數
-    hours: hours.toString(),
     page: page.toString(),
     page_size: limitedPageSize.toString(),
   })

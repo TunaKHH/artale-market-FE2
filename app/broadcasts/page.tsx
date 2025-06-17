@@ -1,17 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Clock, Filter, Search, RefreshCw, AlertCircle, Copy, Check, ChevronLeft, ChevronRight } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { Clock, Search, RefreshCw, AlertCircle, Copy, Check, ChevronLeft, ChevronRight } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Header } from "../components/header"
 import { useBroadcasts } from "@/hooks/useBroadcasts"
-import type { BroadcastMessage } from "@/lib/api"
 
 // 時間格式化組件 - 避免 hydration 錯誤
 const TimeAgo = ({ timestamp }: { timestamp: string }) => {
@@ -150,8 +148,14 @@ const getBadgeText = (type: string) => {
 }
 
 export default function BroadcastsPage() {
-  const [searchQuery, setSearchQuery] = useState("")
   const [searchInput, setSearchInput] = useState("")
+  const [mounted, setMounted] = useState(false)
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // 客戶端掛載檢測
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // 使用自定義 Hook 取得廣播資料
   const {
@@ -172,15 +176,29 @@ export default function BroadcastsPage() {
     refreshInterval: 30000
   })
 
-  // 處理搜尋 (延遲更新)
+  // 處理搜尋 (防抖機制)
   const handleSearch = (value: string) => {
     setSearchInput(value)
-    // 延遲500ms更新實際搜尋，避免頻繁API調用
-    const timer = setTimeout(() => {
-      updateFilters({ keyword: value })
-    }, 500)
-    return () => clearTimeout(timer)
+    
+    // 清除之前的 timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+    
+    // 設定新的 timeout，延遲 800ms 執行搜尋
+    searchTimeoutRef.current = setTimeout(() => {
+      updateFilters({ keyword: value.trim() })
+    }, 800)
   }
+
+  // 清理 timeout
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // 取得廣播類型選項
   const broadcastTypes = [
@@ -191,8 +209,26 @@ export default function BroadcastsPage() {
     { id: "other", name: "其他", count: typeCounts.other },
   ]
 
-  // 獲取可用的伺服器列表 (從當前廣播中提取)
-  const servers = ["all", ...Array.from(new Set(broadcasts.map((b) => b.channel)))]
+
+  // 在未掛載時顯示載入狀態
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">廣播訊息</h1>
+            <p className="text-gray-600 mb-6">載入中...</p>
+          </div>
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <BroadcastSkeleton key={index} />
+            ))}
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -238,31 +274,10 @@ export default function BroadcastsPage() {
                 placeholder="搜尋玩家或訊息..."
                 className="max-w-md"
                 value={searchInput}
-                onChange={(e) => {
-                  setSearchInput(e.target.value)
-                  handleSearch(e.target.value)
-                }}
+                onChange={(e) => handleSearch(e.target.value)}
               />
             </div>
             
-            <div className="flex items-center space-x-2">
-              <Filter className="w-4 h-4 text-gray-400" />
-              <Select
-                value={filters.hours?.toString() || '24'}
-                onValueChange={(value) => updateFilters({ hours: parseInt(value) })}
-              >
-                <SelectTrigger className="w-28">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1小時內</SelectItem>
-                  <SelectItem value="6">6小時內</SelectItem>
-                  <SelectItem value="24">24小時內</SelectItem>
-                  <SelectItem value="72">3天內</SelectItem>
-                  <SelectItem value="168">7天內</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </div>
 
