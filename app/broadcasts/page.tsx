@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Clock, Search, RefreshCw, AlertCircle, Copy, Check, ChevronLeft, ChevronRight } from "lucide-react"
+import { Clock, Search, RefreshCw, AlertCircle, Copy, Check, ChevronLeft, ChevronRight, Loader2, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -150,6 +150,7 @@ const getBadgeText = (type: string) => {
 export default function BroadcastsPage() {
   const [searchInput, setSearchInput] = useState("")
   const [mounted, setMounted] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // 客戶端掛載檢測
@@ -164,13 +165,15 @@ export default function BroadcastsPage() {
     typeCounts,
     loading,
     error,
+    rateLimitError,
     filters,
     updateFilters,
     refresh,
     hasNext,
     hasPrev,
     currentPage,
-    goToPage
+    goToPage,
+    clearRateLimitError
   } = useBroadcasts({
     autoRefresh: true,
     refreshInterval: 30000
@@ -179,24 +182,33 @@ export default function BroadcastsPage() {
   // 處理搜尋 (防抖機制)
   const handleSearch = (value: string) => {
     setSearchInput(value)
-    
+
     // 清除之前的 timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current)
     }
-    
+
+    // 如果有輸入內容，顯示搜尋中狀態
+    if (value.trim()) {
+      setIsSearching(true)
+    } else {
+      setIsSearching(false)
+    }
+
     // 設定新的 timeout，延遲 800ms 執行搜尋
     searchTimeoutRef.current = setTimeout(() => {
       updateFilters({ keyword: value.trim() })
+      setIsSearching(false) // 搜尋完成，取消載入狀態
     }, 800)
   }
 
-  // 清理 timeout
+  // 清理 timeout 和搜尋狀態
   useEffect(() => {
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current)
       }
+      setIsSearching(false)
     }
   }, [])
 
@@ -217,7 +229,18 @@ export default function BroadcastsPage() {
         <Header />
         <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">廣播訊息</h1>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <h1 className="text-3xl font-bold text-gray-900">廣播訊息</h1>
+              </div>
+              <button
+                disabled
+                className="flex items-center space-x-2 px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-gray-50 text-gray-400"
+              >
+                <div className="w-4 h-4 border-2 border-gray-300 rounded-full" />
+                <span>刷新</span>
+              </button>
+            </div>
             <p className="text-gray-600 mb-6">載入中...</p>
           </div>
           <div className="space-y-4">
@@ -238,7 +261,9 @@ export default function BroadcastsPage() {
         {/* Title and Description */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-bold text-gray-900">廣播訊息</h1>
+            <div className="flex items-center space-x-3">
+              <h1 className="text-3xl font-bold text-gray-900">廣播訊息</h1>
+            </div>
             <Button
               onClick={refresh}
               variant="outline"
@@ -252,7 +277,7 @@ export default function BroadcastsPage() {
           </div>
 
           <p className="text-gray-600 mb-6">
-            即時顯示遊戲內的重要訊息，包括交易、組隊、公會招募等。 目前顯示{" "}
+            即時顯示遊戲內的廣播訊息( 1 小時內 )，包括交易、組隊、公會招募等。 目前顯示{" "}
             <span className="font-semibold text-blue-600">{totalCount}</span> 條廣播訊息。
           </p>
 
@@ -266,10 +291,36 @@ export default function BroadcastsPage() {
             </Alert>
           )}
 
+          {/* Rate Limit Error Alert */}
+          {rateLimitError && (
+            <Alert variant="default" className="mb-6 border-orange-200 bg-orange-50">
+              <div className="flex items-start">
+                <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5" />
+                <div className="flex-1 ml-2">
+                  <AlertDescription className="text-orange-800">
+                    {rateLimitError}
+                  </AlertDescription>
+                </div>
+                <button
+                  onClick={clearRateLimitError}
+                  className="ml-2 text-orange-600 hover:text-orange-800 transition-colors"
+                  title="關閉提醒"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </Alert>
+          )}
+
+
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="flex items-center space-x-2">
-              <Search className="w-4 h-4 text-gray-400" />
+              {isSearching ? (
+                <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+              ) : (
+                <Search className="w-4 h-4 text-gray-400" />
+              )}
               <Input
                 placeholder="搜尋玩家或訊息..."
                 className="max-w-md"
@@ -277,7 +328,7 @@ export default function BroadcastsPage() {
                 onChange={(e) => handleSearch(e.target.value)}
               />
             </div>
-            
+
           </div>
         </div>
 
@@ -361,11 +412,11 @@ export default function BroadcastsPage() {
                 <ChevronLeft className="w-4 h-4" />
                 <span>上一頁</span>
               </Button>
-              
+
               <span className="text-sm text-gray-600">
                 第 {currentPage} 頁
               </span>
-              
+
               <Button
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={!hasNext}
@@ -377,7 +428,7 @@ export default function BroadcastsPage() {
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
-            
+
             <div className="text-sm text-gray-500">
               每頁顯示 50 筆，共 {totalCount} 筆
               {filters.keyword && `「${filters.keyword}」搜尋結果`}

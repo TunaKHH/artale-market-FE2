@@ -15,11 +15,13 @@ export function useBroadcasts({
   const [broadcasts, setBroadcasts] = useState<BroadcastMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [rateLimitError, setRateLimitError] = useState<string | null>(null)
   const [totalCount, setTotalCount] = useState(0)
   const [hasNext, setHasNext] = useState(false)
   const [hasPrev, setHasPrev] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [mounted, setMounted] = useState(false)
+
 
   // 篩選狀態
   const [filters, setFilters] = useState({
@@ -29,13 +31,16 @@ export function useBroadcasts({
     server: 'all'
   })
 
+
   // 載入廣播訊息
   const loadBroadcasts = useCallback(async (page = 1, isRefresh = false) => {
+
     try {
       if (!isRefresh) {
         setLoading(true)
       }
       setError(null)
+      setRateLimitError(null)
 
       let response: BroadcastsResponse
 
@@ -64,11 +69,17 @@ export function useBroadcasts({
       setCurrentPage(response.page)
     } catch (err) {
       console.error('載入廣播訊息失敗:', err)
-      setError(err instanceof Error ? err.message : '載入廣播訊息失敗')
+
+      // 檢查是否為 429 錯誤 (Rate Limit)
+      if (err instanceof Error && err.message.includes('429')) {
+        setRateLimitError('請求過於頻繁，請稍後再試。後端伺服器正在保護 API 不被過度使用。')
+      } else {
+        setError(err instanceof Error ? err.message : '載入廣播訊息失敗')
+      }
     } finally {
       setLoading(false)
     }
-  }, [filters, initialPageSize])
+  }, [filters, initialPageSize, mounted])
 
   // 更新篩選條件
   const updateFilters = useCallback((newFilters: Partial<typeof filters>) => {
@@ -81,6 +92,11 @@ export function useBroadcasts({
     loadBroadcasts(currentPage, true)
   }, [loadBroadcasts, currentPage])
 
+  // 清除 rate limit 錯誤
+  const clearRateLimitError = useCallback(() => {
+    setRateLimitError(null)
+  }, [])
+
   // 換頁
   const goToPage = useCallback((page: number) => {
     loadBroadcasts(page)
@@ -90,6 +106,7 @@ export function useBroadcasts({
   useEffect(() => {
     setMounted(true)
   }, [])
+
 
   // 初始載入和篩選變更時重新載入
   useEffect(() => {
@@ -121,7 +138,7 @@ export function useBroadcasts({
         other: filters.messageType === 'other' ? totalCount : 0,
       }
     }
-    
+
     // 沒有類型篩選時，顯示當前載入資料的統計
     return {
       all: broadcasts.length,
@@ -141,6 +158,7 @@ export function useBroadcasts({
     // 狀態
     loading: mounted ? loading : true,
     error: mounted ? error : null,
+    rateLimitError: mounted ? rateLimitError : null,
     hasNext: mounted ? hasNext : false,
     hasPrev: mounted ? hasPrev : false,
     currentPage: mounted ? currentPage : 1,
@@ -152,6 +170,7 @@ export function useBroadcasts({
     // 操作
     refresh,
     goToPage,
-    loadBroadcasts
+    loadBroadcasts,
+    clearRateLimitError
   }
 }

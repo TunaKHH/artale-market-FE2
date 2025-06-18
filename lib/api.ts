@@ -73,6 +73,9 @@ export async function getBroadcasts({
   const response = await fetch(`${API_BASE_URL}/broadcasts?${params}`)
   
   if (!response.ok) {
+    if (response.status === 429) {
+      throw new Error(`429 - ${response.statusText}`)
+    }
     throw new Error(`API 請求失敗: ${response.status} ${response.statusText}`)
   }
   
@@ -145,6 +148,9 @@ export async function searchBroadcasts({
   const response = await fetch(`${API_BASE_URL}/broadcasts?${params}`)
   
   if (!response.ok) {
+    if (response.status === 429) {
+      throw new Error(`429 - ${response.statusText}`)
+    }
     throw new Error(`搜尋請求失敗: ${response.status} ${response.statusText}`)
   }
   
