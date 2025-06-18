@@ -1,6 +1,87 @@
 // API 服務層 - 廣播訊息相關 API
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
 
+// 自定義錯誤類別
+export class RateLimitError extends Error {
+  public rateLimitInfo: any
+  public retryAfter?: number
+  
+  constructor(message: string, rateLimitInfo: any, retryAfter?: number) {
+    super(message)
+    this.name = 'RateLimitError'
+    this.rateLimitInfo = rateLimitInfo
+    this.retryAfter = retryAfter
+  }
+}
+
+// 取得 API 速率限制資訊
+export async function getRateLimits() {
+  const response = await fetch(`${API_BASE_URL}/rate-limits`)
+  
+  if (!response.ok) {
+    throw new Error(`速率限制資訊請求失敗: ${response.status} ${response.statusText}`)
+  }
+  
+  return response.json()
+}
+
+// 通用 API 錯誤處理
+async function handleApiResponse(response: Response): Promise<any> {
+  if (response.ok) {
+    return response.json()
+  }
+  
+  if (response.status === 429) {
+    // 速率限制錯誤 - 自動取得限制資訊
+    const retryAfter = response.headers.get('Retry-After')
+    console.log('Response headers for 429:', {
+      'retry-after': retryAfter,
+      'x-ratelimit-limit': response.headers.get('X-RateLimit-Limit'),
+      'x-ratelimit-remaining': response.headers.get('X-RateLimit-Remaining'),
+      'x-ratelimit-reset': response.headers.get('X-RateLimit-Reset'),
+      'all-headers': Array.from(response.headers.entries())
+    })
+    const retrySeconds = retryAfter ? parseInt(retryAfter) : undefined
+    
+    // 格式化等待時間訊息
+    const formatWaitTime = (seconds?: number): string => {
+      if (!seconds) return '請稍後再試'
+      
+      if (seconds < 60) {
+        return `請等待 ${seconds} 秒後重試`
+      }
+      const minutes = Math.floor(seconds / 60)
+      const remainingSeconds = seconds % 60
+      if (remainingSeconds > 0) {
+        return `請等待 ${minutes} 分 ${remainingSeconds} 秒後重試`
+      }
+      return `請等待 ${minutes} 分鐘後重試`
+    }
+    
+    const waitMessage = formatWaitTime(retrySeconds)
+    let rateLimitInfo = null
+    
+    // 嘗試獲取限制資訊，但不讓失敗影響主要錯誤訊息
+    try {
+      rateLimitInfo = await getRateLimits()
+    } catch (rateLimitFetchError) {
+      // 忽略獲取限制資訊的錯誤，使用 null
+      console.warn('無法獲取速率限制資訊:', rateLimitFetchError)
+    }
+    
+    const errorMessage = `API 請求頻率過高，${waitMessage}`
+    console.log('RateLimitError created:', { errorMessage, retrySeconds, rateLimitInfo })
+    
+    throw new RateLimitError(
+      errorMessage,
+      rateLimitInfo,
+      retrySeconds
+    )
+  }
+  
+  throw new Error(`API 請求失敗: ${response.status} ${response.statusText}`)
+}
+
 export interface BroadcastMessage {
   id: number
   content: string
@@ -71,37 +152,19 @@ export async function getBroadcasts({
   }
 
   const response = await fetch(`${API_BASE_URL}/broadcasts?${params}`)
-  
-  if (!response.ok) {
-    if (response.status === 429) {
-      throw new Error(`429 - ${response.statusText}`)
-    }
-    throw new Error(`API 請求失敗: ${response.status} ${response.statusText}`)
-  }
-  
-  return response.json()
+  return handleApiResponse(response)
 }
 
 // 取得廣播統計資料
 export async function getBroadcastStats(hours = 24): Promise<BroadcastStats> {
   const response = await fetch(`${API_BASE_URL}/broadcasts/stats?hours=${hours}`)
-  
-  if (!response.ok) {
-    throw new Error(`統計資料請求失敗: ${response.status} ${response.statusText}`)
-  }
-  
-  return response.json()
+  return handleApiResponse(response)
 }
 
 // 取得單一廣播訊息
 export async function getBroadcastById(messageId: number): Promise<BroadcastMessage> {
   const response = await fetch(`${API_BASE_URL}/broadcasts/${messageId}`)
-  
-  if (!response.ok) {
-    throw new Error(`廣播訊息請求失敗: ${response.status} ${response.statusText}`)
-  }
-  
-  return response.json()
+  return handleApiResponse(response)
 }
 
 // 取得玩家廣播訊息
@@ -111,12 +174,7 @@ export async function getPlayerBroadcasts(playerName: string, hours = 24): Promi
   })
   
   const response = await fetch(`${API_BASE_URL}/broadcasts/players/${encodeURIComponent(playerName)}?${params}`)
-  
-  if (!response.ok) {
-    throw new Error(`玩家廣播請求失敗: ${response.status} ${response.statusText}`)
-  }
-  
-  return response.json()
+  return handleApiResponse(response)
 }
 
 // 搜尋廣播訊息（使用一般端點的 keyword 參數）
@@ -146,13 +204,5 @@ export async function searchBroadcasts({
 
   // 使用一般端點而非專門的搜尋端點
   const response = await fetch(`${API_BASE_URL}/broadcasts?${params}`)
-  
-  if (!response.ok) {
-    if (response.status === 429) {
-      throw new Error(`429 - ${response.statusText}`)
-    }
-    throw new Error(`搜尋請求失敗: ${response.status} ${response.statusText}`)
-  }
-  
-  return response.json()
+  return handleApiResponse(response)
 }
