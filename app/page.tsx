@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Header } from "./components/header"
+import { useMapleAnalytics } from "@/hooks/useMapleAnalytics"
 
 export default function HomePage() {
   const router = useRouter()

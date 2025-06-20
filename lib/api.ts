@@ -1,6 +1,23 @@
 // API 服務層 - 廣播訊息相關 API
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
 
+// 簡化的 API 追蹤 (只追蹤錯誤和搜尋)
+const trackApiCall = (endpoint: string, success: boolean, searchTerm?: string) => {
+  if (typeof window !== 'undefined' && (window as any).gtag) {
+    if (!success) {
+      // 只追蹤失敗的 API 調用
+      (window as any).gtag('event', 'api_error', {
+        api_endpoint: endpoint
+      })
+    } else if (searchTerm) {
+      // 追蹤搜尋行為
+      (window as any).gtag('event', 'search', {
+        search_term: searchTerm
+      })
+    }
+  }
+}
+
 // 自定義錯誤類別
 export class RateLimitError extends Error {
   public rateLimitInfo: any
@@ -26,8 +43,10 @@ export async function getRateLimits() {
 }
 
 // 通用 API 錯誤處理
-async function handleApiResponse(response: Response): Promise<any> {
+async function handleApiResponse(response: Response, endpoint?: string): Promise<any> {
   if (response.ok) {
+    // 追蹤成功的 API 調用
+    if (endpoint) trackApiCall(endpoint, true)
     return response.json()
   }
   
@@ -152,13 +171,29 @@ export async function getBroadcasts({
   }
 
   const response = await fetch(`${API_BASE_URL}/broadcasts/?${params}`)
-  return handleApiResponse(response)
+  const endpoint = '/broadcasts'
+  
+  // 追蹤搜尋和篩選行為
+  if (keyword) {
+    trackApiCall(`${endpoint}/search`, response.ok, keyword)
+  } else if (messageType && messageType !== 'all') {
+    trackApiCall(`${endpoint}/filter`, response.ok, messageType)
+  } else {
+    trackApiCall(endpoint, response.ok)
+  }
+  
+  return handleApiResponse(response, endpoint)
 }
 
 // 取得廣播統計資料
 export async function getBroadcastStats(hours = 24): Promise<BroadcastStats> {
   const response = await fetch(`${API_BASE_URL}/broadcasts/stats/?hours=${hours}`)
-  return handleApiResponse(response)
+  const endpoint = '/broadcasts/stats'
+  
+  // 追蹤統計資料查詢
+  trackApiCall(endpoint, response.ok, `hours_${hours}`)
+  
+  return handleApiResponse(response, endpoint)
 }
 
 // 取得單一廣播訊息
