@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { LogIn, Menu } from "lucide-react"
+import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -34,11 +34,6 @@ export function Header() {
 
           {/* Right side */}
           <div className="flex items-center space-x-4">
-            <Button variant="outline" size="sm" className="hidden md:flex">
-              <LogIn className="w-4 h-4 mr-2" />
-              登入
-            </Button>
-
             {/* Mobile menu */}
             <Sheet>
               <SheetTrigger asChild>
@@ -57,10 +52,6 @@ export function Header() {
                       廣播訊息
                     </Link>
                   </nav>
-                  <Button variant="outline" className="w-full">
-                    <LogIn className="w-4 h-4 mr-2" />
-                    登入
-                  </Button>
                 </div>
               </SheetContent>
             </Sheet>
