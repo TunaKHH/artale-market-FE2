@@ -277,7 +277,7 @@ export default function BroadcastsPage() {
           </div>
 
           <p className="text-gray-600 mb-6">
-            即時顯示遊戲內的廣播訊息( 1 小時內 )，包括交易、組隊、公會招募等。 目前顯示{" "}
+            即時顯示遊戲內的廣播訊息( 30 分鐘內 )，包括交易、組隊、公會招募等。 目前顯示{" "}
             <span className="font-semibold text-blue-600">{totalCount}</span> 條廣播訊息。
           </p>
 
