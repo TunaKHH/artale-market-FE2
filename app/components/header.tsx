@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Menu } from "lucide-react"
+import { Menu, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -34,6 +34,23 @@ export function Header() {
 
           {/* Right side */}
           <div className="flex items-center space-x-4">
+            {/* 意見回饋按鈕 - 桌面版 */}
+            <a
+              href="https://app.sli.do/event/96njtqMVu3GVdxcf6eDAka"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden md:block"
+            >
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="text-gray-700 hover:text-blue-600"
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                意見回饋
+              </Button>
+            </a>
+
             {/* Mobile menu */}
             <Sheet>
               <SheetTrigger asChild>
@@ -51,6 +68,19 @@ export function Header() {
                     <Link href="/broadcasts" className="text-gray-700 hover:text-blue-600 font-medium">
                       廣播訊息
                     </Link>
+                    
+                    {/* 手機版意見回饋 */}
+                    <div className="border-t pt-4 mt-4">
+                      <a
+                        href="https://app.sli.do/event/96njtqMVu3GVdxcf6eDAka"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center text-sm text-gray-700 hover:text-blue-600"
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        意見回饋
+                      </a>
+                    </div>
                   </nav>
                 </div>
               </SheetContent>
