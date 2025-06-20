@@ -151,13 +151,13 @@ export async function getBroadcasts({
     params.append('keyword', keyword)
   }
 
-  const response = await fetch(`${API_BASE_URL}/broadcasts?${params}`)
+  const response = await fetch(`${API_BASE_URL}/broadcasts/?${params}`)
   return handleApiResponse(response)
 }
 
 // 取得廣播統計資料
 export async function getBroadcastStats(hours = 24): Promise<BroadcastStats> {
-  const response = await fetch(`${API_BASE_URL}/broadcasts/stats?hours=${hours}`)
+  const response = await fetch(`${API_BASE_URL}/broadcasts/stats/?hours=${hours}`)
   return handleApiResponse(response)
 }
 
@@ -203,6 +203,6 @@ export async function searchBroadcasts({
   }
 
   // 使用一般端點而非專門的搜尋端點
-  const response = await fetch(`${API_BASE_URL}/broadcasts?${params}`)
+  const response = await fetch(`${API_BASE_URL}/broadcasts/?${params}`)
   return handleApiResponse(response)
 }
