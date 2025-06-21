@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Link from "next/link"
 import { Header } from "../components/header"
+import { useAnalytics } from "@/hooks/useAnalytics"
 
 // Mock data for demonstration
 const mockItems = [
@@ -102,6 +103,45 @@ export default function TradingPage() {
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [showOffers, setShowOffers] = useState("25")
+  const [pageStartTime] = useState(Date.now())
+  
+  const analytics = useAnalytics()
+
+  // 頁面瀏覽追蹤
+  useEffect(() => {
+    analytics.trackPageView('trading', {
+      total_items: mockItems.length,
+      total_offers: totalOffers,
+      total_players: totalPlayers
+    })
+    
+    // 頁面離開時追蹤停留時間
+    const handleBeforeUnload = () => {
+      const timeSpent = Math.floor((Date.now() - pageStartTime) / 1000)
+      analytics.trackTimeSpent('trading', timeSpent)
+    }
+    
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [analytics, pageStartTime])
+
+  // 搜尋追蹤
+  useEffect(() => {
+    if (searchQuery) {
+      const timer = setTimeout(() => {
+        analytics.trackSearch(searchQuery, 'item', filteredItems.length)
+      }, 500) // 防抖動，避免每個按鍵都發送事件
+      
+      return () => clearTimeout(timer)
+    }
+  }, [searchQuery, filteredItems.length, analytics])
+
+  // 分類篩選追蹤
+  useEffect(() => {
+    if (selectedCategory !== "all") {
+      analytics.trackFilter('category', selectedCategory)
+    }
+  }, [selectedCategory, analytics])
 
   const filteredItems = mockItems
     .filter((item) => {
@@ -140,7 +180,13 @@ export default function TradingPage() {
 
           <div className="flex items-center space-x-4 text-sm text-gray-600 mb-6">
             <span>每個物品顯示</span>
-            <Select value={showOffers} onValueChange={setShowOffers}>
+            <Select value={showOffers} onValueChange={(value) => {
+              setShowOffers(value)
+              analytics.trackAction('offers_per_page_change', 'trading', { 
+                offers_count: value,
+                previous_count: showOffers 
+              })
+            }}>
               <SelectTrigger className="w-24">
                 <SelectValue />
               </SelectTrigger>
@@ -180,7 +226,20 @@ export default function TradingPage() {
         {/* Items Grid */}
         <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-16 gap-2">
           {filteredItems.map((item) => (
-            <Link key={item.id} href={`/offers-to/sell/${item.id}`}>
+            <Link 
+              key={item.id} 
+              href={`/offers-to/sell/${item.id}`}
+              onClick={() => {
+                analytics.trackAction('item_click', 'trading', {
+                  item_id: item.id,
+                  item_name: item.name,
+                  item_category: item.category,
+                  target_page: 'sell_offers',
+                  sell_offers: item.sellOffers,
+                  buy_offers: item.buyOffers
+                })
+              }}
+            >
               <Card className="relative hover:shadow-md transition-shadow cursor-pointer group">
                 <CardContent className="p-2">
                   <div className="relative">
@@ -194,6 +253,12 @@ export default function TradingPage() {
                         onClick={(e) => {
                           e.preventDefault()
                           e.stopPropagation()
+                          analytics.trackAction('badge_click', 'trading', {
+                            item_id: item.id,
+                            item_name: item.name,
+                            badge_type: 'sell_offers',
+                            offers_count: item.sellOffers
+                          })
                           window.location.href = `/offers-to/sell/${item.id}`
                         }}
                       >
@@ -208,6 +273,12 @@ export default function TradingPage() {
                         onClick={(e) => {
                           e.preventDefault()
                           e.stopPropagation()
+                          analytics.trackAction('badge_click', 'trading', {
+                            item_id: item.id,
+                            item_name: item.name,
+                            badge_type: 'buy_offers',
+                            offers_count: item.buyOffers
+                          })
                           window.location.href = `/offers-to/buy/${item.id}`
                         }}
                       >

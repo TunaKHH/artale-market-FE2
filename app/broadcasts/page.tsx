@@ -27,6 +27,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Header } from "../components/header"
 import { ConnectionStatus } from "@/components/connection-status"
 import { useBroadcasts } from "@/hooks/useBroadcasts"
+import { useAnalytics } from "@/hooks/useAnalytics"
 import { isTestEnvironment } from "@/lib/mock-data"
 
 // 時間格式化組件 - 避免 hydration 錯誤
@@ -89,7 +90,7 @@ const TimeAgo = ({ timestamp }: { timestamp: string }) => {
 }
 
 // 玩家複製按鈕組件
-const PlayerCopyButton = ({ playerName, playerId }: { playerName: string; playerId?: string }) => {
+const PlayerCopyButton = ({ playerName, playerId, analytics }: { playerName: string; playerId?: string; analytics: any }) => {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
@@ -98,8 +99,16 @@ const PlayerCopyButton = ({ playerName, playerId }: { playerName: string; player
       await navigator.clipboard.writeText(textToCopy)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000) // 2秒後恢復原狀
+
+      // 追蹤複製行為
+      analytics.trackUserBehavior('player_name_copy', {
+        player_name: playerName,
+        has_player_id: !!playerId,
+        copy_format: playerId ? 'name_with_id' : 'name_only'
+      })
     } catch (err) {
       console.error("複製失敗:", err)
+      analytics.trackError('copy_failed', `Failed to copy player name: ${playerName}`)
     }
   }
 
@@ -115,7 +124,7 @@ const PlayerCopyButton = ({ playerName, playerId }: { playerName: string; player
 }
 
 // 收藏按鈕組件
-const FavoriteButton = ({ broadcast, onFavoriteChange }: { broadcast: any; onFavoriteChange?: () => void }) => {
+const FavoriteButton = ({ broadcast, onFavoriteChange, analytics }: { broadcast: any; onFavoriteChange?: () => void; analytics?: any }) => {
   const [isFavorited, setIsFavorited] = useState(false)
 
   // 檢查是否已收藏
@@ -136,6 +145,15 @@ const FavoriteButton = ({ broadcast, onFavoriteChange }: { broadcast: any; onFav
         localStorage.setItem("broadcast-favorites", JSON.stringify(newFavorites))
         setIsFavorited(false)
         console.log("🔖 已取消收藏:", broadcast.player_name, broadcast.content.slice(0, 30) + "...")
+
+        // 追蹤取消收藏
+        if (analytics) {
+          analytics.trackUserBehavior('unfavorite', {
+            broadcast_id: broadcast.id,
+            player_name: broadcast.player_name,
+            message_type: broadcast.message_type
+          })
+        }
       } else {
         // 添加收藏
         const favoriteItem = {
@@ -146,6 +164,16 @@ const FavoriteButton = ({ broadcast, onFavoriteChange }: { broadcast: any; onFav
         localStorage.setItem("broadcast-favorites", JSON.stringify(favorites))
         setIsFavorited(true)
         console.log("📖 已收藏:", broadcast.player_name, broadcast.content.slice(0, 30) + "...")
+
+        // 追蹤收藏行為
+        if (analytics) {
+          analytics.trackUserBehavior('favorite', {
+            broadcast_id: broadcast.id,
+            player_name: broadcast.player_name,
+            message_type: broadcast.message_type,
+            content_length: broadcast.content.length
+          })
+        }
       }
 
       // 通知父組件收藏狀態改變
@@ -160,11 +188,10 @@ const FavoriteButton = ({ broadcast, onFavoriteChange }: { broadcast: any; onFav
   return (
     <button
       onClick={handleFavorite}
-      className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-all duration-200 hover:scale-105 ${
-        isFavorited
+      className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-all duration-200 hover:scale-105 ${isFavorited
           ? "text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900 dark:text-blue-400"
           : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
-      }`}
+        }`}
       title={isFavorited ? "取消收藏" : "收藏此訊息"}
     >
       <Bookmark className={`w-4 h-4 ${isFavorited ? "fill-current" : ""}`} />
@@ -228,13 +255,37 @@ export default function BroadcastsPage() {
   const [showTestMode, setShowTestMode] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [favoriteMessages, setFavoriteMessages] = useState<any[]>([])
+  const [pageStartTime, setPageStartTime] = useState<number>(0)
+
+  // 分析追蹤
+  const analytics = useAnalytics()
 
   // 客戶端掛載檢測
   useEffect(() => {
     setMounted(true)
     setShowTestMode(isTestEnvironment())
     updateFavoriteCount()
+    setPageStartTime(Date.now())
+
+    // 追蹤頁面瀏覽
+    analytics.trackPageView('broadcasts', {
+      test_mode: isTestEnvironment(),
+      auto_refresh: true
+    })
   }, [])
+
+  // 追蹤頁面停留時間
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (pageStartTime > 0) {
+        const timeSpent = Math.floor((Date.now() - pageStartTime) / 1000)
+        analytics.trackTimeSpent('broadcasts', timeSpent)
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [pageStartTime, analytics])
 
   // 更新收藏數量
   const updateFavoriteCount = () => {
@@ -278,7 +329,18 @@ export default function BroadcastsPage() {
 
   // 執行搜尋
   const handleSearch = () => {
-    updateFilters({ keyword: searchInput.trim() })
+    const searchTerm = searchInput.trim()
+    updateFilters({ keyword: searchTerm })
+
+    // 追蹤搜尋行為
+    if (searchTerm) {
+      analytics.trackSearch(searchTerm, filters.messageType, broadcasts.length)
+      analytics.trackFeatureUsage('search', {
+        search_length: searchTerm.length,
+        has_filters: filters.messageType !== 'all',
+        current_message_type: filters.messageType
+      })
+    }
   }
 
   // 處理鍵盤事件
@@ -290,7 +352,15 @@ export default function BroadcastsPage() {
 
   // 處理卡片點擊
   const handleBroadcastClick = (broadcastId: number) => {
+    const isExpanding = selectedBroadcastId !== broadcastId
     setSelectedBroadcastId((prev) => (prev === broadcastId ? null : broadcastId))
+
+    // 追蹤卡片互動
+    analytics.trackUserBehavior('broadcast_card_click', {
+      action: isExpanding ? 'expand' : 'collapse',
+      broadcast_id: broadcastId,
+      current_filter: filters.messageType
+    })
   }
 
   // 處理分類 Badge 點擊
@@ -300,6 +370,14 @@ export default function BroadcastsPage() {
     // 如果當前已經是該分類，則切換到全部
     const newMessageType = filters.messageType === messageType ? "all" : messageType
     updateFilters({ messageType: newMessageType })
+
+    // 追蹤篩選行為
+    analytics.trackFilter('message_type', newMessageType)
+    analytics.trackUserBehavior('badge_click', {
+      from_type: filters.messageType,
+      to_type: newMessageType,
+      action: newMessageType === 'all' ? 'clear_filter' : 'apply_filter'
+    })
 
     // 提供視覺反饋
     console.log(`🏷️ 切換到分類: ${newMessageType === "all" ? "全部" : getBadgeText(newMessageType)}`)
@@ -386,13 +464,12 @@ export default function BroadcastsPage() {
                 onClick={togglePause}
                 variant={isPaused || isHovering ? "default" : "outline"}
                 size="sm"
-                className={`flex items-center space-x-2 ${
-                  isPaused
+                className={`flex items-center space-x-2 ${isPaused
                     ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
                     : isHovering
                       ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600"
                       : "border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950"
-                }`}
+                  }`}
                 title={isPaused ? "恢復自動刷新" : isHovering ? "滑鼠懸停時自動暫停" : "暫停自動刷新"}
               >
                 {isPaused || isHovering ? (
@@ -408,7 +485,14 @@ export default function BroadcastsPage() {
                 )}
               </Button>
               <Button
-                onClick={refresh}
+                onClick={() => {
+                  refresh()
+                  analytics.trackUserBehavior('manual_refresh', {
+                    current_filter: filters.messageType,
+                    has_search: !!filters.keyword,
+                    total_messages: totalCount
+                  })
+                }}
                 variant="outline"
                 size="sm"
                 disabled={loading}
@@ -527,11 +611,10 @@ export default function BroadcastsPage() {
           {displayMessages.map((broadcast) => (
             <Card
               key={broadcast.id}
-              className={`transition-all duration-200 cursor-pointer ${
-                selectedBroadcastId === broadcast.id
+              className={`transition-all duration-200 cursor-pointer ${selectedBroadcastId === broadcast.id
                   ? "shadow-lg border-primary bg-primary/5"
                   : "hover:shadow-md hover:border-muted-foreground"
-              } ${filters.messageType === "favorites" ? "border-blue-200 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-950/30" : ""}`}
+                } ${filters.messageType === "favorites" ? "border-blue-200 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-950/30" : ""}`}
               onClick={() => handleBroadcastClick(broadcast.id)}
             >
               <CardContent className="p-4">
@@ -540,9 +623,8 @@ export default function BroadcastsPage() {
                     <div className="flex items-center space-x-2 mb-2">
                       <Badge
                         variant={getBadgeColor(broadcast.message_type) as any}
-                        className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-sm ${
-                          filters.messageType === broadcast.message_type ? "ring-2 ring-primary ring-offset-1" : ""
-                        }`}
+                        className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-sm ${filters.messageType === broadcast.message_type ? "ring-2 ring-primary ring-offset-1" : ""
+                          }`}
                         onClick={(e) => handleBadgeClick(e, broadcast.message_type)}
                         title={`點擊篩選「${getBadgeText(broadcast.message_type)}」類型的訊息`}
                       >
@@ -551,16 +633,15 @@ export default function BroadcastsPage() {
                       <span className="text-sm text-muted-foreground">{broadcast.channel}</span>
                       <div className="flex items-center">
                         <span
-                          className={`text-sm font-medium ${
-                            selectedBroadcastId === broadcast.id ? "text-primary" : "text-primary"
-                          }`}
+                          className={`text-sm font-medium ${selectedBroadcastId === broadcast.id ? "text-primary" : "text-primary"
+                            }`}
                         >
                           {broadcast.player_name}
                         </span>
                         {broadcast.player_id && (
                           <span className="text-xs text-muted-foreground">#{broadcast.player_id}</span>
                         )}
-                        <PlayerCopyButton playerName={broadcast.player_name} playerId={broadcast.player_id} />
+                        <PlayerCopyButton playerName={broadcast.player_name} playerId={broadcast.player_id} analytics={analytics} />
                       </div>
                       <div className="flex items-center text-sm text-muted-foreground">
                         <Clock className="w-3 h-3 mr-1" />
@@ -574,15 +655,14 @@ export default function BroadcastsPage() {
                       )}
                     </div>
                     <p
-                      className={`mb-2 ${
-                        selectedBroadcastId === broadcast.id ? "text-foreground font-medium" : "text-foreground"
-                      }`}
+                      className={`mb-2 ${selectedBroadcastId === broadcast.id ? "text-foreground font-medium" : "text-foreground"
+                        }`}
                     >
                       {broadcast.content}
                     </p>
                   </div>
                   <div className="flex-shrink-0">
-                    <FavoriteButton broadcast={broadcast} onFavoriteChange={handleFavoriteChange} />
+                    <FavoriteButton broadcast={broadcast} onFavoriteChange={handleFavoriteChange} analytics={analytics} />
                   </div>
                 </div>
               </CardContent>
@@ -617,7 +697,15 @@ export default function BroadcastsPage() {
           <div className="flex items-center justify-between mt-8">
             <div className="flex items-center space-x-2">
               <Button
-                onClick={() => goToPage(currentPage - 1)}
+                onClick={() => {
+                  goToPage(currentPage - 1)
+                  analytics.trackUserBehavior('pagination', {
+                    action: 'previous_page',
+                    from_page: currentPage,
+                    to_page: currentPage - 1,
+                    total_pages: Math.ceil(totalCount / 50)
+                  })
+                }}
                 disabled={!hasPrev}
                 variant="outline"
                 size="sm"
@@ -630,7 +718,15 @@ export default function BroadcastsPage() {
               <span className="text-sm text-muted-foreground">第 {currentPage} 頁</span>
 
               <Button
-                onClick={() => goToPage(currentPage + 1)}
+                onClick={() => {
+                  goToPage(currentPage + 1)
+                  analytics.trackUserBehavior('pagination', {
+                    action: 'next_page',
+                    from_page: currentPage,
+                    to_page: currentPage + 1,
+                    total_pages: Math.ceil(totalCount / 50)
+                  })
+                }}
                 disabled={!hasNext}
                 variant="outline"
                 size="sm"

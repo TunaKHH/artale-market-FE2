@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ArrowLeft, MessageCircle, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Link from "next/link"
 import { Header } from "../../../components/header"
+import { useAnalytics } from "@/hooks/useAnalytics"
 
 // Mock data for the specific item
 const itemData = {
@@ -97,9 +98,44 @@ const offers = [
 export default function SellOffersPage({ params }: { params: { id: string } }) {
   const [whoFilter, setWhoFilter] = useState("selling")
   const [forFilter, setForFilter] = useState("anything")
-
+  const [pageStartTime] = useState(Date.now())
+  
+  const analytics = useAnalytics()
+  
   const totalOffers = offers.length
   const uniquePlayers = [...new Set(offers.map((offer) => offer.playerName))].length
+
+  // 頁面瀏覽追蹤
+  useEffect(() => {
+    analytics.trackPageView('sell_offers', {
+      item_id: params.id,
+      item_name: itemData.name,
+      total_offers: totalOffers,
+      unique_players: uniquePlayers
+    })
+    
+    // 頁面離開時追蹤停留時間
+    const handleBeforeUnload = () => {
+      const timeSpent = Math.floor((Date.now() - pageStartTime) / 1000)
+      analytics.trackTimeSpent('sell_offers', timeSpent)
+    }
+    
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [analytics, params.id, pageStartTime, totalOffers, uniquePlayers])
+
+  // 篩選追蹤
+  useEffect(() => {
+    if (whoFilter !== "selling") {
+      analytics.trackFilter('who_filter', whoFilter)
+    }
+  }, [whoFilter, analytics])
+
+  useEffect(() => {
+    if (forFilter !== "anything") {
+      analytics.trackFilter('for_filter', forFilter)
+    }
+  }, [forFilter, analytics])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -108,7 +144,15 @@ export default function SellOffersPage({ params }: { params: { id: string } }) {
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
         <div className="mb-6">
-          <Link href="/trading">
+          <Link 
+            href="/trading"
+            onClick={() => {
+              analytics.trackAction('back_to_trading', 'navigation', {
+                from_page: 'sell_offers',
+                item_id: params.id
+              })
+            }}
+          >
             <Button variant="outline" size="sm">
               <ArrowLeft className="w-4 h-4 mr-2" />
               返回交易市場
@@ -230,7 +274,17 @@ export default function SellOffersPage({ params }: { params: { id: string } }) {
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <div className="w-4 h-4 bg-gray-300 rounded-full"></div>
-                        <Link href="#" className="text-blue-600 hover:underline">
+                        <Link 
+                          href="#" 
+                          className="text-blue-600 hover:underline"
+                          onClick={() => {
+                            analytics.trackAction('player_name_click', 'sell_offers', {
+                              player_name: offer.playerName,
+                              item_id: params.id,
+                              offer_id: offer.id
+                            })
+                          }}
+                        >
                           {offer.playerName}
                         </Link>
                       </div>
@@ -243,8 +297,20 @@ export default function SellOffersPage({ params }: { params: { id: string } }) {
                         size="sm"
                         onClick={() => {
                           const offerText = `出售: ${offer.selling.map((item) => `${item.name} x${item.quantity}`).join(", ")} | 收購: ${offer.buying.map((item) => `${item.name} x${item.quantity}`).join(", ")}`
-                          navigator.clipboard.writeText(offerText)
-                          alert("已複製報價資訊！您可以使用此資訊發布相似的報價。")
+                          
+                          try {
+                            navigator.clipboard.writeText(offerText)
+                            analytics.trackAction('copy_offer', 'sell_offers', {
+                              item_id: params.id,
+                              offer_id: offer.id,
+                              player_name: offer.playerName,
+                              success: true
+                            })
+                            alert("已複製報價資訊！您可以使用此資訊發布相似的報價。")
+                          } catch (error) {
+                            analytics.trackError('copy_offer_failed', error?.toString() || 'Unknown error')
+                            alert("複製失敗，請手動複製報價資訊。")
+                          }
                         }}
                         title="複製此報價"
                       >
@@ -260,12 +326,30 @@ export default function SellOffersPage({ params }: { params: { id: string } }) {
 
         {/* Action Buttons */}
         <div className="mt-6 flex justify-center space-x-4">
-          <Button className="bg-blue-600 hover:bg-blue-700">
+          <Button 
+            className="bg-blue-600 hover:bg-blue-700"
+            onClick={() => {
+              analytics.trackAction('post_offer_click', 'sell_offers', {
+                item_id: params.id,
+                item_name: itemData.name
+              })
+            }}
+          >
             <MessageCircle className="w-4 h-4 mr-2" />
             發布您的報價
           </Button>
           <Button variant="outline">
-            <Link href={`/offers-to/buy/${params.id}`}>查看收購報價</Link>
+            <Link 
+              href={`/offers-to/buy/${params.id}`}
+              onClick={() => {
+                analytics.trackAction('view_buy_offers', 'sell_offers', {
+                  item_id: params.id,
+                  item_name: itemData.name
+                })
+              }}
+            >
+              查看收購報價
+            </Link>
           </Button>
         </div>
       </main>

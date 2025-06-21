@@ -3,14 +3,27 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Header } from "./components/header"
-import { useMapleAnalytics } from "@/hooks/useMapleAnalytics"
+import { useAnalytics } from "@/hooks/useAnalytics"
 
 export default function HomePage() {
   const router = useRouter()
+  const analytics = useAnalytics()
 
   useEffect(() => {
+    // 追蹤首頁瀏覽
+    analytics.trackPageView('home', { 
+      redirect_target: '/broadcasts',
+      is_auto_redirect: true 
+    })
+    
+    // 追蹤重導向行為
+    analytics.trackAction('auto_redirect', 'navigation', {
+      from: 'home',
+      to: 'broadcasts'
+    })
+    
     router.push("/broadcasts")
-  }, [router])
+  }, [router, analytics])
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -7,14 +7,21 @@ import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useTheme } from "next-themes"
 import Link from "next/link"
+import { useAnalytics } from "@/hooks/useAnalytics"
 
 export function Header() {
   const [searchQuery, setSearchQuery] = useState("")
   const [shareCopied, setShareCopied] = useState(false)
   const { theme, setTheme } = useTheme()
+  const analytics = useAnalytics()
 
   // 分享功能
   const handleShare = async () => {
+    analytics.trackAction('share_attempt', 'header', {
+      page_url: window.location.href,
+      method: 'button_click'
+    })
+    
     const shareData = {
       title: "Artale Love - 楓之谷世界廣播監控",
       text: "來看看楓之谷世界的即時廣播訊息，包含交易、組隊、公會招募等資訊！",
@@ -25,10 +32,14 @@ export function Header() {
       // 優先使用 Web Share API（行動裝置支援較好）
       if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
         await navigator.share(shareData)
+        analytics.trackAction('share_success', 'header', {
+          method: 'web_share_api'
+        })
         return
       }
     } catch (err) {
       console.log("Web Share API 失敗，改用複製連結")
+      analytics.trackError('share_web_api_failed', err?.toString() || 'Unknown error')
     }
 
     // 備用方案：複製連結到剪貼簿
@@ -37,6 +48,9 @@ export function Header() {
         await navigator.clipboard.writeText(window.location.href)
         setShareCopied(true)
         setTimeout(() => setShareCopied(false), 2000)
+        analytics.trackAction('share_success', 'header', {
+          method: 'clipboard_api'
+        })
       } else {
         // 最後備用方案：使用傳統的複製方法
         const textArea = document.createElement("textarea")
@@ -53,22 +67,30 @@ export function Header() {
           document.execCommand("copy")
           setShareCopied(true)
           setTimeout(() => setShareCopied(false), 2000)
+          analytics.trackAction('share_success', 'header', {
+            method: 'exec_command'
+          })
         } catch (err) {
           console.error("傳統複製方法也失敗:", err)
-          // 靜默失敗，不顯示 alert
+          analytics.trackError('share_exec_command_failed', err?.toString() || 'Unknown error')
         } finally {
           document.body.removeChild(textArea)
         }
       }
     } catch (err) {
       console.error("複製連結失敗:", err)
-      // 靜默失敗，不顯示 alert
+      analytics.trackError('share_clipboard_failed', err?.toString() || 'Unknown error')
     }
   }
 
   // 切換主題
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark")
+    const newTheme = theme === "dark" ? "light" : "dark"
+    setTheme(newTheme)
+    analytics.trackAction('theme_toggle', 'header', {
+      from_theme: theme,
+      to_theme: newTheme
+    })
   }
 
   return (
@@ -77,14 +99,31 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center space-x-4">
-            <Link href="/" className="flex items-center space-x-2">
+            <Link 
+              href="/" 
+              className="flex items-center space-x-2"
+              onClick={() => {
+                analytics.trackAction('logo_click', 'header', {
+                  target: 'home'
+                })
+              }}
+            >
               <span className="text-xl font-bold text-foreground">Artale Love</span>
             </Link>
           </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/broadcasts" className="text-muted-foreground hover:text-primary font-medium transition-colors">
+            <Link 
+              href="/broadcasts" 
+              className="text-muted-foreground hover:text-primary font-medium transition-colors"
+              onClick={() => {
+                analytics.trackAction('nav_click', 'header', {
+                  target: 'broadcasts',
+                  device_type: 'desktop'
+                })
+              }}
+            >
               廣播訊息
             </Link>
           </nav>
@@ -161,6 +200,12 @@ export function Header() {
               target="_blank"
               rel="noopener noreferrer"
               className="hidden md:block"
+              onClick={() => {
+                analytics.trackAction('feedback_click', 'header', {
+                  target: 'slido',
+                  device_type: 'desktop'
+                })
+              }}
             >
               <Button variant="outline" size="sm" className="text-muted-foreground hover:text-primary">
                 <MessageSquare className="w-4 h-4 mr-2" />
@@ -171,7 +216,16 @@ export function Header() {
             {/* Mobile menu */}
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="md:hidden">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className="md:hidden"
+                  onClick={() => {
+                    analytics.trackAction('mobile_menu_open', 'header', {
+                      device_type: 'mobile'
+                    })
+                  }}
+                >
                   <Menu className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
@@ -185,6 +239,12 @@ export function Header() {
                     <Link
                       href="/broadcasts"
                       className="text-muted-foreground hover:text-primary font-medium transition-colors"
+                      onClick={() => {
+                        analytics.trackAction('nav_click', 'header', {
+                          target: 'broadcasts',
+                          device_type: 'mobile'
+                        })
+                      }}
                     >
                       廣播訊息
                     </Link>
@@ -216,6 +276,12 @@ export function Header() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center text-sm text-muted-foreground hover:text-primary transition-colors"
+                        onClick={() => {
+                          analytics.trackAction('feedback_click', 'header', {
+                            target: 'slido',
+                            device_type: 'mobile'
+                          })
+                        }}
                       >
                         <MessageSquare className="w-4 h-4 mr-2" />
                         意見回饋
