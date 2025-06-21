@@ -1,22 +1,24 @@
 "use client"
 
 import { useState } from "react"
-import { Menu, MessageSquare, Share2, Check } from "lucide-react"
+import { Menu, MessageSquare, Share2, Check, Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { useTheme } from "next-themes"
 import Link from "next/link"
 
 export function Header() {
   const [searchQuery, setSearchQuery] = useState("")
   const [shareCopied, setShareCopied] = useState(false)
+  const { theme, setTheme } = useTheme()
 
   // 分享功能
   const handleShare = async () => {
     const shareData = {
-      title: 'Artale Love - 楓之谷世界廣播監控',
-      text: '來看看楓之谷世界的即時廣播訊息，包含交易、組隊、公會招募等資訊！',
-      url: window.location.href
+      title: "Artale Love - 楓之谷世界廣播監控",
+      text: "來看看楓之谷世界的即時廣播訊息，包含交易、組隊、公會招募等資訊！",
+      url: window.location.href,
     }
 
     try {
@@ -26,7 +28,7 @@ export function Header() {
         return
       }
     } catch (err) {
-      console.log('Web Share API 失敗，改用複製連結')
+      console.log("Web Share API 失敗，改用複製連結")
     }
 
     // 備用方案：複製連結到剪貼簿
@@ -37,63 +39,96 @@ export function Header() {
         setTimeout(() => setShareCopied(false), 2000)
       } else {
         // 最後備用方案：使用傳統的複製方法
-        const textArea = document.createElement('textarea')
+        const textArea = document.createElement("textarea")
         textArea.value = window.location.href
-        textArea.style.position = 'fixed'
-        textArea.style.left = '-999999px'
-        textArea.style.top = '-999999px'
+        textArea.style.position = "fixed"
+        textArea.style.left = "-999999px"
+        textArea.style.top = "-999999px"
         document.body.appendChild(textArea)
         textArea.focus()
         textArea.select()
 
         try {
           // eslint-disable-next-line deprecation/deprecation
-          document.execCommand('copy')
+          document.execCommand("copy")
           setShareCopied(true)
           setTimeout(() => setShareCopied(false), 2000)
         } catch (err) {
-          console.error('傳統複製方法也失敗:', err)
+          console.error("傳統複製方法也失敗:", err)
           // 靜默失敗，不顯示 alert
         } finally {
           document.body.removeChild(textArea)
         }
       }
     } catch (err) {
-      console.error('複製連結失敗:', err)
+      console.error("複製連結失敗:", err)
       // 靜默失敗，不顯示 alert
     }
   }
 
+  // 切換主題
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark")
+  }
+
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <header className="bg-background border-b border-border sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center space-x-4">
             <Link href="/" className="flex items-center space-x-2">
-              {/* 移除包含 "RE" 文字的 div */}
-              <span className="text-xl font-bold text-gray-900">Artale Love</span>
+              <span className="text-xl font-bold text-foreground">Artale Love</span>
             </Link>
           </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            {/* <Link href="/trading" className="text-blue-600 font-medium">
-              交易市場
-            </Link> */}
-            <Link href="/broadcasts" className="text-gray-700 hover:text-blue-600 font-medium">
+            <Link href="/broadcasts" className="text-muted-foreground hover:text-primary font-medium transition-colors">
               廣播訊息
             </Link>
           </nav>
 
           {/* Right side */}
           <div className="flex items-center space-x-2">
+            {/* 主題切換按鈕 - 桌面版 */}
+            <Button
+              onClick={toggleTheme}
+              variant="outline"
+              size="sm"
+              className="hidden md:flex"
+              title={theme === "dark" ? "切換到淺色模式" : "切換到深色模式"}
+            >
+              {theme === "dark" ? (
+                <>
+                  <Sun className="w-4 h-4 mr-2" />
+                  淺色
+                </>
+              ) : (
+                <>
+                  <Moon className="w-4 h-4 mr-2" />
+                  深色
+                </>
+              )}
+            </Button>
+
+            {/* 主題切換按鈕 - 手機版 */}
+            <Button
+              onClick={toggleTheme}
+              variant="outline"
+              size="icon"
+              className="md:hidden"
+              title={theme === "dark" ? "切換到淺色模式" : "切換到深色模式"}
+            >
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </Button>
+
             {/* 分享按鈕 - 桌面版 */}
             <Button
               onClick={handleShare}
               variant="outline"
               size="sm"
-              className="hidden md:flex text-gray-700 hover:text-blue-600"
+              className="hidden md:flex text-muted-foreground hover:text-primary"
               title={shareCopied ? "連結已複製！" : "分享此頁面"}
             >
               {shareCopied ? (
@@ -117,11 +152,7 @@ export function Header() {
               className="md:hidden"
               title={shareCopied ? "連結已複製！" : "分享此頁面"}
             >
-              {shareCopied ? (
-                <Check className="w-4 h-4 text-green-500" />
-              ) : (
-                <Share2 className="w-4 h-4" />
-              )}
+              {shareCopied ? <Check className="w-4 h-4 text-green-500" /> : <Share2 className="w-4 h-4" />}
             </Button>
 
             {/* 意見回饋按鈕 - 桌面版 */}
@@ -131,11 +162,7 @@ export function Header() {
               rel="noopener noreferrer"
               className="hidden md:block"
             >
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-gray-700 hover:text-blue-600"
-              >
+              <Button variant="outline" size="sm" className="text-muted-foreground hover:text-primary">
                 <MessageSquare className="w-4 h-4 mr-2" />
                 意見回饋
               </Button>
@@ -155,12 +182,32 @@ export function Header() {
                 <div className="flex flex-col space-y-4 mt-8">
                   <Input placeholder="搜尋..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                   <nav className="flex flex-col space-y-4">
-                    {/* <Link href="/trading" className="text-blue-600 font-medium">
-                      交易市場
-                    </Link> */}
-                    <Link href="/broadcasts" className="text-gray-700 hover:text-blue-600 font-medium">
+                    <Link
+                      href="/broadcasts"
+                      className="text-muted-foreground hover:text-primary font-medium transition-colors"
+                    >
                       廣播訊息
                     </Link>
+
+                    {/* 手機版主題切換 */}
+                    <div className="border-t pt-4 mt-4">
+                      <button
+                        onClick={toggleTheme}
+                        className="flex items-center text-sm text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        {theme === "dark" ? (
+                          <>
+                            <Sun className="w-4 h-4 mr-2" />
+                            切換到淺色模式
+                          </>
+                        ) : (
+                          <>
+                            <Moon className="w-4 h-4 mr-2" />
+                            切換到深色模式
+                          </>
+                        )}
+                      </button>
+                    </div>
 
                     {/* 手機版意見回饋 */}
                     <div className="border-t pt-4 mt-4">
@@ -168,7 +215,7 @@ export function Header() {
                         href="https://app.sli.do/event/96njtqMVu3GVdxcf6eDAka"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center text-sm text-gray-700 hover:text-blue-600"
+                        className="flex items-center text-sm text-muted-foreground hover:text-primary transition-colors"
                       >
                         <MessageSquare className="w-4 h-4 mr-2" />
                         意見回饋

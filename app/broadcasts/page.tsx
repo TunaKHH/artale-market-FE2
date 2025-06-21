@@ -1,7 +1,21 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
-import { Clock, Search, RefreshCw, AlertCircle, Copy, Check, ChevronLeft, ChevronRight, X, Pause, Play } from "lucide-react"
+import {
+  Clock,
+  Search,
+  RefreshCw,
+  AlertCircle,
+  Copy,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Pause,
+  Play,
+} from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -13,8 +27,8 @@ import { useBroadcasts } from "@/hooks/useBroadcasts"
 
 // 時間格式化組件 - 避免 hydration 錯誤
 const TimeAgo = ({ timestamp }: { timestamp: string }) => {
-  const [timeAgo, setTimeAgo] = useState<string>('')
-  const [fullTimestamp, setFullTimestamp] = useState<string>('')
+  const [timeAgo, setTimeAgo] = useState<string>("")
+  const [fullTimestamp, setFullTimestamp] = useState<string>("")
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -29,21 +43,23 @@ const TimeAgo = ({ timestamp }: { timestamp: string }) => {
       const hours = Math.floor(diff / 3600000)
       const days = Math.floor(diff / 86400000)
 
-      if (minutes < 1) setTimeAgo('剛剛')
+      if (minutes < 1) setTimeAgo("剛剛")
       else if (minutes < 60) setTimeAgo(`${minutes}分鐘前`)
       else if (hours < 24) setTimeAgo(`${hours}小時前`)
       else setTimeAgo(`${days}天前`)
 
       // 設定完整的時間戳顯示 (台灣時間格式)
-      setFullTimestamp(date.toLocaleString('zh-TW', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      }))
+      setFullTimestamp(
+        date.toLocaleString("zh-TW", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }),
+      )
     }
 
     updateTimeAgo()
@@ -61,7 +77,7 @@ const TimeAgo = ({ timestamp }: { timestamp: string }) => {
   return (
     <span
       title={fullTimestamp}
-      className="cursor-help border-b border-dotted border-gray-400 hover:border-gray-600"
+      className="cursor-help border-b border-dotted border-muted-foreground hover:border-foreground transition-colors"
     >
       {timeAgo}
     </span>
@@ -69,7 +85,7 @@ const TimeAgo = ({ timestamp }: { timestamp: string }) => {
 }
 
 // 玩家複製按鈕組件
-const PlayerCopyButton = ({ playerName, playerId }: { playerName: string, playerId?: string }) => {
+const PlayerCopyButton = ({ playerName, playerId }: { playerName: string; playerId?: string }) => {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
@@ -79,21 +95,17 @@ const PlayerCopyButton = ({ playerName, playerId }: { playerName: string, player
       setCopied(true)
       setTimeout(() => setCopied(false), 2000) // 2秒後恢復原狀
     } catch (err) {
-      console.error('複製失敗:', err)
+      console.error("複製失敗:", err)
     }
   }
 
   return (
     <button
       onClick={handleCopy}
-      className="inline-flex items-center justify-center w-4 h-4 ml-1 text-gray-400 hover:text-gray-600 transition-colors"
+      className="inline-flex items-center justify-center w-4 h-4 ml-1 text-muted-foreground hover:text-foreground transition-colors"
       title={`複製 ${playerId ? `${playerName}#${playerId}` : playerName}`}
     >
-      {copied ? (
-        <Check className="w-3 h-3 text-green-500" />
-      ) : (
-        <Copy className="w-3 h-3" />
-      )}
+      {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
     </button>
   )
 }
@@ -105,12 +117,12 @@ const BroadcastSkeleton = () => (
       <div className="flex items-start justify-between">
         <div className="flex-1 space-y-2">
           <div className="flex items-center space-x-2">
-            <div className="h-5 w-12 bg-gray-200 rounded animate-pulse" />
-            <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
-            <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+            <div className="h-5 w-12 bg-muted rounded animate-pulse" />
+            <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+            <div className="h-4 w-20 bg-muted rounded animate-pulse" />
           </div>
-          <div className="h-4 w-full bg-gray-200 rounded animate-pulse" />
-          <div className="h-3 w-3/4 bg-gray-200 rounded animate-pulse" />
+          <div className="h-4 w-full bg-muted rounded animate-pulse" />
+          <div className="h-3 w-3/4 bg-muted rounded animate-pulse" />
         </div>
       </div>
     </CardContent>
@@ -177,10 +189,10 @@ export default function BroadcastsPage() {
     togglePause,
     countdown,
     isHovering,
-    setHoverState
+    setHoverState,
   } = useBroadcasts({
     autoRefresh: true,
-    refreshInterval: 30000
+    refreshInterval: 30000,
   })
 
   // 處理搜尋輸入
@@ -195,14 +207,14 @@ export default function BroadcastsPage() {
 
   // 處理鍵盤事件
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleSearch()
     }
   }
 
   // 處理卡片點擊
   const handleBroadcastClick = (broadcastId: number) => {
-    setSelectedBroadcastId(prev => prev === broadcastId ? null : broadcastId)
+    setSelectedBroadcastId((prev) => (prev === broadcastId ? null : broadcastId))
   }
 
   // 取得廣播類型選項
@@ -214,17 +226,16 @@ export default function BroadcastsPage() {
     { id: "other", name: "其他", count: typeCounts.other },
   ]
 
-
   // 在未掛載時顯示載入狀態
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <Header />
         <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
-                <h1 className="text-3xl font-bold text-gray-900">廣播訊息</h1>
+                <h1 className="text-3xl font-bold text-foreground">廣播訊息</h1>
               </div>
               <div className="flex items-center space-x-2">
                 <button
@@ -236,14 +247,14 @@ export default function BroadcastsPage() {
                 </button>
                 <button
                   disabled
-                  className="flex items-center space-x-2 px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-gray-50 text-gray-400"
+                  className="flex items-center space-x-2 px-3 py-1.5 text-sm border border-muted rounded-md bg-muted text-muted-foreground"
                 >
-                  <div className="w-4 h-4 border-2 border-gray-300 rounded-full" />
+                  <div className="w-4 h-4 border-2 border-muted-foreground rounded-full" />
                   <span>刷新</span>
                 </button>
               </div>
             </div>
-            <p className="text-gray-600 mb-6">載入中...</p>
+            <p className="text-muted-foreground mb-6">載入中...</p>
           </div>
           <div className="space-y-4">
             {Array.from({ length: 5 }).map((_, index) => (
@@ -256,7 +267,7 @@ export default function BroadcastsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -264,28 +275,23 @@ export default function BroadcastsPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
-              <h1 className="text-3xl font-bold text-gray-900">廣播訊息</h1>
+              <h1 className="text-3xl font-bold text-foreground">廣播訊息</h1>
             </div>
             <div className="flex items-center space-x-2">
               <Button
                 onClick={togglePause}
-                variant={(isPaused || isHovering) ? "default" : "outline"}
+                variant={isPaused || isHovering ? "default" : "outline"}
                 size="sm"
-                className={`flex items-center space-x-2 ${isPaused
-                  ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
-                  : isHovering
-                    ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600"
-                    : "border-orange-500 text-orange-600 hover:bg-orange-50"
-                  }`}
-                title={
+                className={`flex items-center space-x-2 ${
                   isPaused
-                    ? "恢復自動刷新"
+                    ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
                     : isHovering
-                      ? "滑鼠懸停時自動暫停"
-                      : "暫停自動刷新"
-                }
+                      ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600"
+                      : "border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950"
+                }`}
+                title={isPaused ? "恢復自動刷新" : isHovering ? "滑鼠懸停時自動暫停" : "暫停自動刷新"}
               >
-                {(isPaused || isHovering) ? (
+                {isPaused || isHovering ? (
                   <>
                     <Play className="w-4 h-4" />
                     <span>{isPaused ? "恢復" : "懸停中"}</span>
@@ -293,9 +299,7 @@ export default function BroadcastsPage() {
                 ) : (
                   <>
                     <Pause className="w-4 h-4" />
-                    <span>
-                      {countdown > 0 ? `暫停 (${countdown}s)` : "暫停"}
-                    </span>
+                    <span>{countdown > 0 ? `暫停 (${countdown}s)` : "暫停"}</span>
                   </>
                 )}
               </Button>
@@ -306,41 +310,39 @@ export default function BroadcastsPage() {
                 disabled={loading}
                 className="flex items-center space-x-2"
               >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
                 <span>刷新</span>
               </Button>
             </div>
           </div>
 
-          <p className="text-gray-600 mb-6">
+          <p className="text-muted-foreground mb-6">
             即時顯示遊戲內的廣播訊息( 30 分鐘內 )，包括交易、組隊、公會招募等。 目前顯示{" "}
-            <span className="font-semibold text-blue-600">{totalCount}</span> 條廣播訊息。
+            <span className="font-semibold text-primary">{totalCount}</span> 條廣播訊息。
           </p>
-
 
           {/* Error Alert */}
           {error && (
             <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {error}
-              </AlertDescription>
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
           {/* Rate Limit Error Alert */}
           {rateLimitError && (
-            <Alert variant="default" className="mb-6 border-orange-200 bg-orange-50">
+            <Alert
+              variant="default"
+              className="mb-6 border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950"
+            >
               <div className="flex items-start">
                 <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5" />
                 <div className="flex-1 ml-2">
-                  <AlertDescription className="text-orange-800">
-                    {rateLimitError}
-                  </AlertDescription>
+                  <AlertDescription className="text-orange-800 dark:text-orange-200">{rateLimitError}</AlertDescription>
                 </div>
                 <button
                   onClick={clearRateLimitError}
-                  className="ml-2 text-orange-600 hover:text-orange-800 transition-colors"
+                  className="ml-2 text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-200 transition-colors"
                   title="關閉提醒"
                 >
                   <X className="h-4 w-4" />
@@ -349,11 +351,10 @@ export default function BroadcastsPage() {
             </Alert>
           )}
 
-
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="flex items-center space-x-2">
-              <Search className="w-4 h-4 text-gray-400" />
+              <Search className="w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="搜尋玩家或訊息... (按 Enter 搜尋)"
                 className="max-w-md"
@@ -361,17 +362,11 @@ export default function BroadcastsPage() {
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={handleKeyDown}
               />
-              <Button
-                onClick={handleSearch}
-                variant="outline"
-                size="sm"
-                className="flex items-center space-x-1"
-              >
+              <Button onClick={handleSearch} variant="outline" size="sm" className="flex items-center space-x-1">
                 <Search className="w-4 h-4" />
                 <span>搜尋</span>
               </Button>
             </div>
-
           </div>
         </div>
 
@@ -391,70 +386,66 @@ export default function BroadcastsPage() {
         </Tabs>
 
         {/* Broadcasts List */}
-        <div
-          className="space-y-4"
-          onMouseEnter={() => setHoverState(true)}
-          onMouseLeave={() => setHoverState(false)}
-        >
-          {loading && (
+        <div className="space-y-4" onMouseEnter={() => setHoverState(true)} onMouseLeave={() => setHoverState(false)}>
+          {loading &&
             // 顯示載入中骨架
-            Array.from({ length: 5 }).map((_, index) => (
-              <BroadcastSkeleton key={index} />
-            ))
-          )}
+            Array.from({ length: 5 }).map((_, index) => <BroadcastSkeleton key={index} />)}
 
-          {!loading && broadcasts.map((broadcast) => (
-            <Card
-              key={broadcast.id}
-              className={`transition-all duration-200 cursor-pointer ${selectedBroadcastId === broadcast.id
-                ? "shadow-lg border-blue-500 bg-blue-50"
-                : "hover:shadow-md hover:border-gray-300"
+          {!loading &&
+            broadcasts.map((broadcast) => (
+              <Card
+                key={broadcast.id}
+                className={`transition-all duration-200 cursor-pointer ${
+                  selectedBroadcastId === broadcast.id
+                    ? "shadow-lg border-primary bg-primary/5"
+                    : "hover:shadow-md hover:border-muted-foreground"
                 }`}
-              onClick={() => handleBroadcastClick(broadcast.id)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Badge variant={getBadgeColor(broadcast.message_type) as any}>
-                        {getBadgeText(broadcast.message_type)}
-                      </Badge>
-                      <span className="text-sm text-gray-500">{broadcast.channel}</span>
-                      <div className="flex items-center">
-                        <span className={`text-sm font-medium ${selectedBroadcastId === broadcast.id ? "text-blue-700" : "text-blue-600"
-                          }`}>
-                          {broadcast.player_name}
-                        </span>
-                        {broadcast.player_id && (
-                          <span className="text-xs text-gray-400">#{broadcast.player_id}</span>
-                        )}
-                        <PlayerCopyButton
-                          playerName={broadcast.player_name}
-                          playerId={broadcast.player_id}
-                        />
+                onClick={() => handleBroadcastClick(broadcast.id)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Badge variant={getBadgeColor(broadcast.message_type) as any}>
+                          {getBadgeText(broadcast.message_type)}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">{broadcast.channel}</span>
+                        <div className="flex items-center">
+                          <span
+                            className={`text-sm font-medium ${
+                              selectedBroadcastId === broadcast.id ? "text-primary" : "text-primary"
+                            }`}
+                          >
+                            {broadcast.player_name}
+                          </span>
+                          {broadcast.player_id && (
+                            <span className="text-xs text-muted-foreground">#{broadcast.player_id}</span>
+                          )}
+                          <PlayerCopyButton playerName={broadcast.player_name} playerId={broadcast.player_id} />
+                        </div>
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Clock className="w-3 h-3 mr-1" />
+                          <TimeAgo timestamp={broadcast.timestamp} />
+                        </div>
                       </div>
-                      <div className="flex items-center text-sm text-gray-500">
-                        <Clock className="w-3 h-3 mr-1" />
-                        <TimeAgo timestamp={broadcast.timestamp} />
-                      </div>
+                      <p
+                        className={`mb-2 ${
+                          selectedBroadcastId === broadcast.id ? "text-foreground font-medium" : "text-foreground"
+                        }`}
+                      >
+                        {broadcast.content}
+                      </p>
                     </div>
-                    <p className={`mb-2 ${selectedBroadcastId === broadcast.id ? "text-gray-800 font-medium" : "text-gray-900"
-                      }`}>
-                      {broadcast.content}
-                    </p>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))}
         </div>
 
         {/* Empty state */}
         {!loading && broadcasts.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500">
-              {error ? '無法載入廣播訊息' : '找不到符合條件的廣播訊息。'}
-            </p>
+            <p className="text-muted-foreground">{error ? "無法載入廣播訊息" : "找不到符合條件的廣播訊息。"}</p>
           </div>
         )}
 
@@ -473,9 +464,7 @@ export default function BroadcastsPage() {
                 <span>上一頁</span>
               </Button>
 
-              <span className="text-sm text-gray-600">
-                第 {currentPage} 頁
-              </span>
+              <span className="text-sm text-muted-foreground">第 {currentPage} 頁</span>
 
               <Button
                 onClick={() => goToPage(currentPage + 1)}
@@ -489,14 +478,12 @@ export default function BroadcastsPage() {
               </Button>
             </div>
 
-            <div className="text-sm text-gray-500">
-              每頁顯示 50 筆，共 {totalCount} 筆
-              {filters.keyword && `「${filters.keyword}」搜尋結果`}
-              {!filters.keyword && '訊息'}
+            <div className="text-sm text-muted-foreground">
+              每頁顯示 50 筆，共 {totalCount} 筆{filters.keyword && `「${filters.keyword}」搜尋結果`}
+              {!filters.keyword && "訊息"}
             </div>
           </div>
         )}
-
       </main>
     </div>
   )

@@ -64,3 +64,8 @@
     grid-template-columns: repeat(16, minmax(0, 1fr));
   }
 }
+
+/* 平滑的主題切換動畫 */
+* {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
