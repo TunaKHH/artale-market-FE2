@@ -21,6 +21,10 @@ export function useBroadcasts({
   const [hasPrev, setHasPrev] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [mounted, setMounted] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
+  const [isHovering, setIsHovering] = useState(false)
+  const [countdown, setCountdown] = useState(0)
+  const [savedCountdown, setSavedCountdown] = useState(0)
 
 
   // 篩選狀態
@@ -90,12 +94,35 @@ export function useBroadcasts({
   // 刷新資料
   const refresh = useCallback(() => {
     loadBroadcasts(currentPage, true)
-  }, [loadBroadcasts, currentPage])
+    // 手動刷新後重新開始倒數計時
+    if (!isPaused && autoRefresh) {
+      setCountdown(Math.floor(refreshInterval / 1000))
+    }
+  }, [loadBroadcasts, currentPage, isPaused, autoRefresh, refreshInterval])
 
   // 清除 rate limit 錯誤
   const clearRateLimitError = useCallback(() => {
     setRateLimitError(null)
   }, [])
+
+  // 切換暫停/恢復刷新
+  const togglePause = useCallback(() => {
+    setIsPaused(prev => !prev)
+  }, [])
+
+  // 設置 hover 狀態
+  const setHoverState = useCallback((hovering: boolean) => {
+    if (hovering) {
+      // 進入 hover 時保存當前倒數
+      setSavedCountdown(countdown)
+    } else {
+      // 離開 hover 時恢復倒數
+      if (savedCountdown > 0) {
+        setCountdown(savedCountdown)
+      }
+    }
+    setIsHovering(hovering)
+  }, [countdown, savedCountdown])
 
   // 換頁
   const goToPage = useCallback((page: number) => {
@@ -115,16 +142,37 @@ export function useBroadcasts({
     }
   }, [loadBroadcasts, mounted])
 
-  // 自動刷新
+  // 自動刷新與倒數計時
   useEffect(() => {
-    if (!autoRefresh || !mounted) return
+    if (!autoRefresh || !mounted || isPaused) {
+      if (!isHovering) {
+        setCountdown(0)
+      }
+      return
+    }
 
-    const interval = setInterval(() => {
-      refresh()
-    }, refreshInterval)
+    if (isHovering) {
+      // hover 時不進行倒數，但保持當前值
+      return
+    }
 
-    return () => clearInterval(interval)
-  }, [autoRefresh, refreshInterval, refresh, mounted])
+    // 如果沒有有效的倒數，重新開始
+    if (countdown <= 0) {
+      setCountdown(Math.floor(refreshInterval / 1000))
+    }
+
+    const countdownInterval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          refresh()
+          return Math.floor(refreshInterval / 1000)
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(countdownInterval)
+  }, [autoRefresh, refreshInterval, refresh, mounted, isPaused, isHovering, countdown])
 
   // 取得統計資料 - 智能統計邏輯
   const getTypeCounts = useCallback(() => {
@@ -162,6 +210,9 @@ export function useBroadcasts({
     hasNext: mounted ? hasNext : false,
     hasPrev: mounted ? hasPrev : false,
     currentPage: mounted ? currentPage : 1,
+    isPaused: mounted ? isPaused : false,
+    isHovering: mounted ? isHovering : false,
+    countdown: mounted ? countdown : 0,
 
     // 篩選
     filters,
@@ -171,6 +222,8 @@ export function useBroadcasts({
     refresh,
     goToPage,
     loadBroadcasts,
-    clearRateLimitError
+    clearRateLimitError,
+    togglePause,
+    setHoverState
   }
 }

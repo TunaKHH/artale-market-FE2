@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Menu, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import Link from "next/link"
 
 export function Header() {
@@ -59,6 +59,9 @@ export function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent>
+                <SheetHeader>
+                  <SheetTitle className="sr-only">導航選單</SheetTitle>
+                </SheetHeader>
                 <div className="flex flex-col space-y-4 mt-8">
                   <Input placeholder="搜尋..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                   <nav className="flex flex-col space-y-4">

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Clock, Search, RefreshCw, AlertCircle, Copy, Check, ChevronLeft, ChevronRight, Loader2, X } from "lucide-react"
+import { Clock, Search, RefreshCw, AlertCircle, Copy, Check, ChevronLeft, ChevronRight, Loader2, X, Pause, Play } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -151,6 +151,7 @@ export default function BroadcastsPage() {
   const [searchInput, setSearchInput] = useState("")
   const [mounted, setMounted] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
+  const [selectedBroadcastId, setSelectedBroadcastId] = useState<string | null>(null)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // 客戶端掛載檢測
@@ -173,7 +174,12 @@ export default function BroadcastsPage() {
     hasPrev,
     currentPage,
     goToPage,
-    clearRateLimitError
+    clearRateLimitError,
+    isPaused,
+    togglePause,
+    countdown,
+    isHovering,
+    setHoverState
   } = useBroadcasts({
     autoRefresh: true,
     refreshInterval: 30000
@@ -212,6 +218,11 @@ export default function BroadcastsPage() {
     }
   }, [])
 
+  // 處理卡片點擊
+  const handleBroadcastClick = (broadcastId: string) => {
+    setSelectedBroadcastId(prev => prev === broadcastId ? null : broadcastId)
+  }
+
   // 取得廣播類型選項
   const broadcastTypes = [
     { id: "all", name: "全部", count: typeCounts.all },
@@ -233,13 +244,22 @@ export default function BroadcastsPage() {
               <div className="flex items-center space-x-3">
                 <h1 className="text-3xl font-bold text-gray-900">廣播訊息</h1>
               </div>
-              <button
-                disabled
-                className="flex items-center space-x-2 px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-gray-50 text-gray-400"
-              >
-                <div className="w-4 h-4 border-2 border-gray-300 rounded-full" />
-                <span>刷新</span>
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  disabled
+                  className="flex items-center space-x-2 px-3 py-1.5 text-sm border border-orange-300 rounded-md bg-orange-50 text-orange-400"
+                >
+                  <Pause className="w-4 h-4" />
+                  <span>暫停</span>
+                </button>
+                <button
+                  disabled
+                  className="flex items-center space-x-2 px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-gray-50 text-gray-400"
+                >
+                  <div className="w-4 h-4 border-2 border-gray-300 rounded-full" />
+                  <span>刷新</span>
+                </button>
+              </div>
             </div>
             <p className="text-gray-600 mb-6">載入中...</p>
           </div>
@@ -264,22 +284,70 @@ export default function BroadcastsPage() {
             <div className="flex items-center space-x-3">
               <h1 className="text-3xl font-bold text-gray-900">廣播訊息</h1>
             </div>
-            <Button
-              onClick={refresh}
-              variant="outline"
-              size="sm"
-              disabled={loading}
-              className="flex items-center space-x-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              <span>刷新</span>
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={togglePause}
+                variant={(isPaused || isHovering) ? "default" : "outline"}
+                size="sm"
+                className={`flex items-center space-x-2 ${
+                  isPaused 
+                    ? "bg-green-600 hover:bg-green-700 text-white border-green-600" 
+                    : isHovering
+                    ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600"
+                    : "border-orange-500 text-orange-600 hover:bg-orange-50"
+                }`}
+                title={
+                  isPaused 
+                    ? "恢復自動刷新" 
+                    : isHovering 
+                    ? "滑鼠懸停時自動暫停" 
+                    : "暫停自動刷新"
+                }
+              >
+                {(isPaused || isHovering) ? (
+                  <>
+                    <Play className="w-4 h-4" />
+                    <span>{isPaused ? "恢復" : "懸停中"}</span>
+                  </>
+                ) : (
+                  <>
+                    <Pause className="w-4 h-4" />
+                    <span>暫停</span>
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={refresh}
+                variant="outline"
+                size="sm"
+                disabled={loading}
+                className="flex items-center space-x-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <span>刷新</span>
+              </Button>
+            </div>
           </div>
 
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-600 mb-4">
             即時顯示遊戲內的廣播訊息( 30 分鐘內 )，包括交易、組隊、公會招募等。 目前顯示{" "}
             <span className="font-semibold text-blue-600">{totalCount}</span> 條廣播訊息。
           </p>
+
+          {/* Auto-refresh status */}
+          <div className="mb-6">
+            <p className="text-sm text-center">
+              {isPaused ? (
+                <span className="text-orange-600 font-medium">🔸 自動刷新已暫停</span>
+              ) : isHovering ? (
+                <span className="text-purple-600 font-medium">⏸️ 滑鼠懸停時暫停刷新</span>
+              ) : countdown > 0 ? (
+                <span className="text-blue-600">🔄 廣播訊息將在 <span className="font-medium">{countdown}</span> 秒後自動更新</span>
+              ) : (
+                <span className="text-gray-500">🔄 廣播訊息每30秒自動更新一次</span>
+              )}
+            </p>
+          </div>
 
           {/* Error Alert */}
           {error && (
@@ -348,7 +416,11 @@ export default function BroadcastsPage() {
         </Tabs>
 
         {/* Broadcasts List */}
-        <div className="space-y-4">
+        <div 
+          className="space-y-4"
+          onMouseEnter={() => setHoverState(true)}
+          onMouseLeave={() => setHoverState(false)}
+        >
           {loading && (
             // 顯示載入中骨架
             Array.from({ length: 5 }).map((_, index) => (
@@ -357,7 +429,15 @@ export default function BroadcastsPage() {
           )}
 
           {!loading && broadcasts.map((broadcast) => (
-            <Card key={broadcast.id} className="hover:shadow-md transition-shadow">
+            <Card 
+              key={broadcast.id} 
+              className={`transition-all duration-200 cursor-pointer ${
+                selectedBroadcastId === broadcast.id
+                  ? "shadow-lg border-blue-500 bg-blue-50"
+                  : "hover:shadow-md hover:border-gray-300"
+              }`}
+              onClick={() => handleBroadcastClick(broadcast.id)}
+            >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -367,7 +447,11 @@ export default function BroadcastsPage() {
                       </Badge>
                       <span className="text-sm text-gray-500">{broadcast.channel}</span>
                       <div className="flex items-center">
-                        <span className="text-sm font-medium text-blue-600">{broadcast.player_name}</span>
+                        <span className={`text-sm font-medium ${
+                          selectedBroadcastId === broadcast.id ? "text-blue-700" : "text-blue-600"
+                        }`}>
+                          {broadcast.player_name}
+                        </span>
                         {broadcast.player_id && (
                           <span className="text-xs text-gray-400">#{broadcast.player_id}</span>
                         )}
@@ -381,7 +465,11 @@ export default function BroadcastsPage() {
                         <TimeAgo timestamp={broadcast.timestamp} />
                       </div>
                     </div>
-                    <p className="text-gray-900 mb-2">{broadcast.content}</p>
+                    <p className={`mb-2 ${
+                      selectedBroadcastId === broadcast.id ? "text-gray-800 font-medium" : "text-gray-900"
+                    }`}>
+                      {broadcast.content}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -437,10 +525,6 @@ export default function BroadcastsPage() {
           </div>
         )}
 
-        {/* Auto-refresh notice */}
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500">廣播訊息每30秒自動更新一次</p>
-        </div>
       </main>
     </div>
   )
