@@ -8,15 +8,15 @@
 
 #### 本地開發
 在 `.env.local` 檔案中設定：
-```bash
+\`\`\`bash
 NEXT_PUBLIC_IS_PRODUCTION=false  # 開發環境，會使用假資料
-```
+\`\`\`
 
 #### 正式站部署
 在 `.env.production` 或 Vercel 環境變數中設定：
-```bash
+\`\`\`bash
 NEXT_PUBLIC_IS_PRODUCTION=true   # 正式站，不使用假資料
-```
+\`\`\`
 
 ### 環境檢測邏輯
 
@@ -36,13 +36,13 @@ NEXT_PUBLIC_IS_PRODUCTION=true   # 正式站，不使用假資料
 ### Vercel 部署設定
 
 在 Vercel 專案設定中加入環境變數：
-```
+\`\`\`
 NEXT_PUBLIC_IS_PRODUCTION=true
-```
+\`\`\`
 
 ### 除錯
 
 開啟瀏覽器 Console 可以看到環境檢測資訊：
-```
+\`\`\`
 🔍 環境檢測: { hostname: "localhost", isProduction: false, env: "false" }
-```
+\`\`\`

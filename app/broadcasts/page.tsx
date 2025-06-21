@@ -16,6 +16,7 @@ import {
   Pause,
   Play,
   TestTube,
+  Bookmark,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -113,6 +114,63 @@ const PlayerCopyButton = ({ playerName, playerId }: { playerName: string; player
   )
 }
 
+// 收藏按鈕組件
+const FavoriteButton = ({ broadcast, onFavoriteChange }: { broadcast: any; onFavoriteChange?: () => void }) => {
+  const [isFavorited, setIsFavorited] = useState(false)
+
+  // 檢查是否已收藏
+  useEffect(() => {
+    const favorites = JSON.parse(localStorage.getItem("broadcast-favorites") || "[]")
+    setIsFavorited(favorites.some((fav: any) => fav.id === broadcast.id))
+  }, [broadcast.id])
+
+  const handleFavorite = async (e: React.MouseEvent) => {
+    e.stopPropagation() // 阻止事件冒泡
+
+    try {
+      const favorites = JSON.parse(localStorage.getItem("broadcast-favorites") || "[]")
+
+      if (isFavorited) {
+        // 取消收藏
+        const newFavorites = favorites.filter((fav: any) => fav.id !== broadcast.id)
+        localStorage.setItem("broadcast-favorites", JSON.stringify(newFavorites))
+        setIsFavorited(false)
+        console.log("🔖 已取消收藏:", broadcast.player_name, broadcast.content.slice(0, 30) + "...")
+      } else {
+        // 添加收藏
+        const favoriteItem = {
+          ...broadcast,
+          favorited_at: new Date().toISOString(),
+        }
+        favorites.push(favoriteItem)
+        localStorage.setItem("broadcast-favorites", JSON.stringify(favorites))
+        setIsFavorited(true)
+        console.log("📖 已收藏:", broadcast.player_name, broadcast.content.slice(0, 30) + "...")
+      }
+
+      // 通知父組件收藏狀態改變
+      if (onFavoriteChange) {
+        onFavoriteChange()
+      }
+    } catch (err) {
+      console.error("收藏操作失敗:", err)
+    }
+  }
+
+  return (
+    <button
+      onClick={handleFavorite}
+      className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-all duration-200 hover:scale-105 ${isFavorited
+          ? "text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900 dark:text-blue-400"
+          : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+        }`}
+      title={isFavorited ? "取消收藏" : "收藏此訊息"}
+    >
+      <Bookmark className={`w-4 h-4 ${isFavorited ? "fill-current" : ""}`} />
+    </button>
+  )
+}
+
 // 載入中骨架組件
 const BroadcastSkeleton = () => (
   <Card className="mb-4">
@@ -167,12 +225,24 @@ export default function BroadcastsPage() {
   const [mounted, setMounted] = useState(false)
   const [selectedBroadcastId, setSelectedBroadcastId] = useState<number | null>(null)
   const [showTestMode, setShowTestMode] = useState(false)
+  const [favoriteCount, setFavoriteCount] = useState(0)
+  const [favoriteMessages, setFavoriteMessages] = useState<any[]>([])
 
   // 客戶端掛載檢測
   useEffect(() => {
     setMounted(true)
     setShowTestMode(isTestEnvironment())
+    updateFavoriteCount()
   }, [])
+
+  // 更新收藏數量
+  const updateFavoriteCount = () => {
+    if (typeof window !== "undefined") {
+      const favorites = JSON.parse(localStorage.getItem("broadcast-favorites") || "[]")
+      setFavoriteCount(favorites.length)
+      setFavoriteMessages(favorites)
+    }
+  }
 
   // 使用自定義 Hook 取得廣播資料
   const {
@@ -234,14 +304,23 @@ export default function BroadcastsPage() {
     console.log(`🏷️ 切換到分類: ${newMessageType === "all" ? "全部" : getBadgeText(newMessageType)}`)
   }
 
+  // 處理收藏狀態改變
+  const handleFavoriteChange = () => {
+    updateFavoriteCount()
+  }
+
   // 取得廣播類型選項
   const broadcastTypes = [
-    { id: "all", name: "全部", count: typeCounts.all },
+    { id: "all", name: "全部", count: totalCount },
     { id: "sell", name: "賣", count: typeCounts.sell },
     { id: "buy", name: "買", count: typeCounts.buy },
     { id: "team", name: "組隊", count: typeCounts.team },
     { id: "other", name: "其他", count: typeCounts.other },
+    { id: "favorites", name: "收藏", count: favoriteCount },
   ]
+
+  // 根據當前篩選條件決定要顯示的訊息
+  const displayMessages = filters.messageType === "favorites" ? favoriteMessages : broadcasts
 
   // 在未掛載時顯示載入狀態
   if (!mounted) {
@@ -306,13 +385,12 @@ export default function BroadcastsPage() {
                 onClick={togglePause}
                 variant={isPaused || isHovering ? "default" : "outline"}
                 size="sm"
-                className={`flex items-center space-x-2 ${
-                  isPaused
+                className={`flex items-center space-x-2 ${isPaused
                     ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
                     : isHovering
                       ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600"
                       : "border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950"
-                }`}
+                  }`}
                 title={isPaused ? "恢復自動刷新" : isHovering ? "滑鼠懸停時自動暫停" : "暫停自動刷新"}
               >
                 {isPaused || isHovering ? (
@@ -341,10 +419,19 @@ export default function BroadcastsPage() {
           </div>
 
           <p className="text-muted-foreground mb-6">
-            即時顯示遊戲內的廣播訊息( 30 分鐘內 )，包括交易、組隊、公會招募等。 目前顯示{" "}
-            <span className="font-semibold text-primary">{totalCount}</span> 條廣播訊息。
-            {showTestMode && (
-              <span className="ml-2 text-orange-600">🧪 目前使用測試資料，API 連線失敗時會自動切換。</span>
+            {filters.messageType === "favorites" ? (
+              <>
+                顯示您收藏的廣播訊息。 目前有 <span className="font-semibold text-blue-600">{favoriteCount}</span>{" "}
+                條收藏訊息。
+              </>
+            ) : (
+              <>
+                即時顯示遊戲內的廣播訊息( 30 分鐘內 )，包括交易、組隊、公會招募等。 目前顯示{" "}
+                <span className="font-semibold text-primary">{totalCount}</span> 條廣播訊息。
+                {showTestMode && (
+                  <span className="ml-2 text-orange-600">🧪 目前使用測試資料，API 連線失敗時會自動切換。</span>
+                )}
+              </>
             )}
           </p>
 
@@ -352,7 +439,7 @@ export default function BroadcastsPage() {
           <ConnectionStatus />
 
           {/* Error Alert */}
-          {error && (
+          {error && filters.messageType !== "favorites" && (
             <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
@@ -365,7 +452,7 @@ export default function BroadcastsPage() {
           )}
 
           {/* Rate Limit Error Alert */}
-          {rateLimitError && (
+          {rateLimitError && filters.messageType !== "favorites" && (
             <Alert
               variant="default"
               className="mb-6 border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950"
@@ -387,22 +474,24 @@ export default function BroadcastsPage() {
           )}
 
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="flex items-center space-x-2">
-              <Search className="w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="搜尋玩家或訊息... (按 Enter 搜尋)"
-                className="max-w-md"
-                value={searchInput}
-                onChange={(e) => handleInputChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-              />
-              <Button onClick={handleSearch} variant="outline" size="sm" className="flex items-center space-x-1">
-                <Search className="w-4 h-4" />
-                <span>搜尋</span>
-              </Button>
+          {filters.messageType !== "favorites" && (
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <div className="flex items-center space-x-2">
+                <Search className="w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="搜尋玩家或訊息... (按 Enter 搜尋)"
+                  className="max-w-md"
+                  value={searchInput}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                />
+                <Button onClick={handleSearch} variant="outline" size="sm" className="flex items-center space-x-1">
+                  <Search className="w-4 h-4" />
+                  <span>搜尋</span>
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Type Tabs */}
@@ -411,10 +500,16 @@ export default function BroadcastsPage() {
           onValueChange={(value) => updateFilters({ messageType: value })}
           className="mb-8"
         >
-          <TabsList className="grid w-full grid-cols-5 gap-1">
+          <TabsList className="grid w-full grid-cols-6 gap-1">
             {broadcastTypes.map((type) => (
               <TabsTrigger key={type.id} value={type.id} className="text-sm px-3 py-2">
-                {type.name}
+                <div className="flex items-center space-x-1">
+                  {type.id === "favorites" && <Bookmark className="w-3 h-3" />}
+                  <span>{type.name}</span>
+                  {type.count > 0 && (
+                    <span className="text-xs bg-muted-foreground/20 px-1.5 py-0.5 rounded-full">{type.count}</span>
+                  )}
+                </div>
               </TabsTrigger>
             ))}
           </TabsList>
@@ -423,79 +518,96 @@ export default function BroadcastsPage() {
         {/* Broadcasts List */}
         <div className="space-y-4" onMouseEnter={() => setHoverState(true)} onMouseLeave={() => setHoverState(false)}>
           {loading &&
+            filters.messageType !== "favorites" &&
             // 顯示載入中骨架
             Array.from({ length: 5 }).map((_, index) => <BroadcastSkeleton key={index} />)}
 
-          {!loading &&
-            broadcasts.map((broadcast) => (
-              <Card
-                key={broadcast.id}
-                className={`transition-all duration-200 cursor-pointer ${
-                  selectedBroadcastId === broadcast.id
-                    ? "shadow-lg border-primary bg-primary/5"
-                    : "hover:shadow-md hover:border-muted-foreground"
-                }`}
-                onClick={() => handleBroadcastClick(broadcast.id)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Badge
-                          variant={getBadgeColor(broadcast.message_type) as any}
-                          className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-sm ${
-                            filters.messageType === broadcast.message_type ? "ring-2 ring-primary ring-offset-1" : ""
+          {displayMessages.map((broadcast) => (
+            <Card
+              key={broadcast.id}
+              className={`transition-all duration-200 cursor-pointer ${selectedBroadcastId === broadcast.id
+                  ? "shadow-lg border-primary bg-primary/5"
+                  : "hover:shadow-md hover:border-muted-foreground"
+                } ${filters.messageType === "favorites" ? "border-blue-200 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-950/30" : ""}`}
+              onClick={() => handleBroadcastClick(broadcast.id)}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 pr-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Badge
+                        variant={getBadgeColor(broadcast.message_type) as any}
+                        className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-sm ${filters.messageType === broadcast.message_type ? "ring-2 ring-primary ring-offset-1" : ""
                           }`}
-                          onClick={(e) => handleBadgeClick(e, broadcast.message_type)}
-                          title={`點擊篩選「${getBadgeText(broadcast.message_type)}」類型的訊息`}
-                        >
-                          {getBadgeText(broadcast.message_type)}
-                        </Badge>
-                        <span className="text-sm text-muted-foreground">{broadcast.channel}</span>
-                        <div className="flex items-center">
-                          <span
-                            className={`text-sm font-medium ${
-                              selectedBroadcastId === broadcast.id ? "text-primary" : "text-primary"
-                            }`}
-                          >
-                            {broadcast.player_name}
-                          </span>
-                          {broadcast.player_id && (
-                            <span className="text-xs text-muted-foreground">#{broadcast.player_id}</span>
-                          )}
-                          <PlayerCopyButton playerName={broadcast.player_name} playerId={broadcast.player_id} />
-                        </div>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Clock className="w-3 h-3 mr-1" />
-                          <TimeAgo timestamp={broadcast.timestamp} />
-                        </div>
-                      </div>
-                      <p
-                        className={`mb-2 ${
-                          selectedBroadcastId === broadcast.id ? "text-foreground font-medium" : "text-foreground"
-                        }`}
+                        onClick={(e) => handleBadgeClick(e, broadcast.message_type)}
+                        title={`點擊篩選「${getBadgeText(broadcast.message_type)}」類型的訊息`}
                       >
-                        {broadcast.content}
-                      </p>
+                        {getBadgeText(broadcast.message_type)}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">{broadcast.channel}</span>
+                      <div className="flex items-center">
+                        <span
+                          className={`text-sm font-medium ${selectedBroadcastId === broadcast.id ? "text-primary" : "text-primary"
+                            }`}
+                        >
+                          {broadcast.player_name}
+                        </span>
+                        {broadcast.player_id && (
+                          <span className="text-xs text-muted-foreground">#{broadcast.player_id}</span>
+                        )}
+                        <PlayerCopyButton playerName={broadcast.player_name} playerId={broadcast.player_id} />
+                      </div>
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Clock className="w-3 h-3 mr-1" />
+                        <TimeAgo timestamp={broadcast.timestamp} />
+                      </div>
+                      {filters.messageType === "favorites" && broadcast.favorited_at && (
+                        <div className="flex items-center text-xs text-blue-600 dark:text-blue-400">
+                          <Bookmark className="w-3 h-3 mr-1 fill-current" />
+                          <span>收藏於 {new Date(broadcast.favorited_at).toLocaleDateString("zh-TW")}</span>
+                        </div>
+                      )}
                     </div>
+                    <p
+                      className={`mb-2 ${selectedBroadcastId === broadcast.id ? "text-foreground font-medium" : "text-foreground"
+                        }`}
+                    >
+                      {broadcast.content}
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                  <div className="flex-shrink-0">
+                    <FavoriteButton broadcast={broadcast} onFavoriteChange={handleFavoriteChange} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {/* Empty state */}
-        {!loading && broadcasts.length === 0 && (
+        {!loading && displayMessages.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">{error ? "無法載入廣播訊息" : "找不到符合條件的廣播訊息。"}</p>
-            {showTestMode && error && (
-              <p className="text-sm text-orange-600 mt-2">🧪 測試模式：如果看到此訊息，表示假資料生成可能有問題。</p>
+            {filters.messageType === "favorites" ? (
+              <div className="space-y-2">
+                <Bookmark className="w-12 h-12 mx-auto text-muted-foreground" />
+                <p className="text-muted-foreground">您還沒有收藏任何廣播訊息。</p>
+                <p className="text-sm text-muted-foreground">點擊訊息右側的書籤圖標來收藏感興趣的訊息！</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-muted-foreground">{error ? "無法載入廣播訊息" : "找不到符合條件的廣播訊息。"}</p>
+                {showTestMode && error && (
+                  <p className="text-sm text-orange-600 mt-2">
+                    🧪 測試模式：如果看到此訊息，表示假資料生成可能有問題。
+                  </p>
+                )}
+              </>
             )}
           </div>
         )}
 
-        {/* Pagination */}
-        {!loading && (hasNext || hasPrev || totalCount > 0) && (
+        {/* Pagination - 只在非收藏模式下顯示 */}
+        {!loading && filters.messageType !== "favorites" && (hasNext || hasPrev || totalCount > 0) && (
           <div className="flex items-center justify-between mt-8">
             <div className="flex items-center space-x-2">
               <Button
