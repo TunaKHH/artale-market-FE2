@@ -1,11 +1,30 @@
 import { sendGAEvent } from '@next/third-parties/google'
 
 export const useAnalytics = () => {
-  // 追蹤廣播搜尋
-  const trackSearch = (query: string, messageType?: string) => {
+  // 追蹤廣播搜尋（增強版）
+  const trackSearch = (query: string, messageType?: string, resultCount?: number) => {
     sendGAEvent('event', 'search', {
       search_term: query,
-      message_type: messageType || 'all'
+      message_type: messageType || 'all',
+      result_count: resultCount || 0,
+      has_results: (resultCount || 0) > 0
+    })
+    
+    // 追蹤無結果搜尋
+    if ((resultCount || 0) === 0) {
+      sendGAEvent('event', 'search_no_results', {
+        search_term: query,
+        message_type: messageType || 'all'
+      })
+    }
+  }
+
+  // 追蹤搜尋後的用戶行為
+  const trackSearchInteraction = (action: 'click' | 'copy' | 'share', searchTerm: string, itemId?: string) => {
+    sendGAEvent('event', 'search_interaction', {
+      interaction_type: action,
+      search_term: searchTerm,
+      item_id: itemId
     })
   }
 
@@ -50,6 +69,7 @@ export const useAnalytics = () => {
 
   return {
     trackSearch,
+    trackSearchInteraction,
     trackFilter,
     trackPageView,
     trackUserAction,

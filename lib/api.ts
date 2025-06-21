@@ -10,19 +10,31 @@ import {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
-// 簡化的 API 追蹤 (只追蹤錯誤和搜尋)
-const trackApiCall = (endpoint: string, success: boolean, searchTerm?: string) => {
+// 增強的 API 追蹤 (追蹤錯誤、搜尋和結果)
+const trackApiCall = (endpoint: string, success: boolean, searchTerm?: string, resultCount?: number) => {
   if (typeof window !== "undefined" && (window as any).gtag) {
     if (!success) {
-      // 只追蹤失敗的 API 調用
+      // 追蹤失敗的 API 調用
       ;(window as any).gtag("event", "api_error", {
         api_endpoint: endpoint,
+        search_term: searchTerm || "unknown"
       })
     } else if (searchTerm) {
-      // 追蹤搜尋行為
+      // 追蹤搜尋行為和結果
       ;(window as any).gtag("event", "search", {
         search_term: searchTerm,
+        result_count: resultCount || 0,
+        has_results: (resultCount || 0) > 0,
+        endpoint: endpoint
       })
+      
+      // 特別追蹤無結果搜尋
+      if ((resultCount || 0) === 0) {
+        ;(window as any).gtag("event", "search_no_results", {
+          search_term: searchTerm,
+          endpoint: endpoint
+        })
+      }
     }
   }
 }
@@ -267,16 +279,18 @@ export async function getBroadcasts({
 
     const endpoint = "/broadcasts"
 
+    const result = await handleApiResponse(response, endpoint)
+    const resultCount = result?.total || result?.messages?.length || 0
+    
     // 追蹤搜尋和篩選行為
     if (keyword) {
-      trackApiCall(`${endpoint}/search`, response.ok, keyword)
+      trackApiCall(`${endpoint}/search`, response.ok, keyword, resultCount)
     } else if (messageType && messageType !== "all") {
-      trackApiCall(`${endpoint}/filter`, response.ok, messageType)
+      trackApiCall(`${endpoint}/filter`, response.ok, messageType, resultCount)
     } else {
-      trackApiCall(endpoint, response.ok)
+      trackApiCall(endpoint, response.ok, undefined, resultCount)
     }
 
-    const result = await handleApiResponse(response, endpoint)
     console.log("✅ [API] 請求成功:", result)
     return result
   } catch (error) {
@@ -287,7 +301,7 @@ export async function getBroadcasts({
       console.log("🧪 [測試模式] API 失敗，切換到假資料")
 
       // 追蹤 API 失敗但使用假資料成功
-      trackApiCall("/broadcasts", false)
+      trackApiCall("/broadcasts", false, keyword || messageType)
 
       return getMockBroadcastsResponse({
         page,
