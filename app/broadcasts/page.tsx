@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { Clock, Search, RefreshCw, AlertCircle, Copy, Check, ChevronLeft, ChevronRight, Loader2, X, Pause, Play } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Clock, Search, RefreshCw, AlertCircle, Copy, Check, ChevronLeft, ChevronRight, X, Pause, Play } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -150,9 +150,7 @@ const getBadgeText = (type: string) => {
 export default function BroadcastsPage() {
   const [searchInput, setSearchInput] = useState("")
   const [mounted, setMounted] = useState(false)
-  const [isSearching, setIsSearching] = useState(false)
-  const [selectedBroadcastId, setSelectedBroadcastId] = useState<string | null>(null)
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [selectedBroadcastId, setSelectedBroadcastId] = useState<number | null>(null)
 
   // 客戶端掛載檢測
   useEffect(() => {
@@ -185,41 +183,25 @@ export default function BroadcastsPage() {
     refreshInterval: 30000
   })
 
-  // 處理搜尋 (防抖機制)
-  const handleSearch = (value: string) => {
+  // 處理搜尋輸入
+  const handleInputChange = (value: string) => {
     setSearchInput(value)
-
-    // 清除之前的 timeout
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current)
-    }
-
-    // 如果有輸入內容，顯示搜尋中狀態
-    if (value.trim()) {
-      setIsSearching(true)
-    } else {
-      setIsSearching(false)
-    }
-
-    // 設定新的 timeout，延遲 800ms 執行搜尋
-    searchTimeoutRef.current = setTimeout(() => {
-      updateFilters({ keyword: value.trim() })
-      setIsSearching(false) // 搜尋完成，取消載入狀態
-    }, 800)
   }
 
-  // 清理 timeout 和搜尋狀態
-  useEffect(() => {
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current)
-      }
-      setIsSearching(false)
+  // 執行搜尋
+  const handleSearch = () => {
+    updateFilters({ keyword: searchInput.trim() })
+  }
+
+  // 處理鍵盤事件
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch()
     }
-  }, [])
+  }
 
   // 處理卡片點擊
-  const handleBroadcastClick = (broadcastId: string) => {
+  const handleBroadcastClick = (broadcastId: number) => {
     setSelectedBroadcastId(prev => prev === broadcastId ? null : broadcastId)
   }
 
@@ -289,19 +271,18 @@ export default function BroadcastsPage() {
                 onClick={togglePause}
                 variant={(isPaused || isHovering) ? "default" : "outline"}
                 size="sm"
-                className={`flex items-center space-x-2 ${
-                  isPaused 
-                    ? "bg-green-600 hover:bg-green-700 text-white border-green-600" 
-                    : isHovering
+                className={`flex items-center space-x-2 ${isPaused
+                  ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
+                  : isHovering
                     ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600"
                     : "border-orange-500 text-orange-600 hover:bg-orange-50"
-                }`}
+                  }`}
                 title={
-                  isPaused 
-                    ? "恢復自動刷新" 
-                    : isHovering 
-                    ? "滑鼠懸停時自動暫停" 
-                    : "暫停自動刷新"
+                  isPaused
+                    ? "恢復自動刷新"
+                    : isHovering
+                      ? "滑鼠懸停時自動暫停"
+                      : "暫停自動刷新"
                 }
               >
                 {(isPaused || isHovering) ? (
@@ -372,17 +353,23 @@ export default function BroadcastsPage() {
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="flex items-center space-x-2">
-              {isSearching ? (
-                <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
-              ) : (
-                <Search className="w-4 h-4 text-gray-400" />
-              )}
+              <Search className="w-4 h-4 text-gray-400" />
               <Input
-                placeholder="搜尋玩家或訊息..."
+                placeholder="搜尋玩家或訊息... (按 Enter 搜尋)"
                 className="max-w-md"
                 value={searchInput}
-                onChange={(e) => handleSearch(e.target.value)}
+                onChange={(e) => handleInputChange(e.target.value)}
+                onKeyDown={handleKeyDown}
               />
+              <Button
+                onClick={handleSearch}
+                variant="outline"
+                size="sm"
+                className="flex items-center space-x-1"
+              >
+                <Search className="w-4 h-4" />
+                <span>搜尋</span>
+              </Button>
             </div>
 
           </div>
@@ -404,7 +391,7 @@ export default function BroadcastsPage() {
         </Tabs>
 
         {/* Broadcasts List */}
-        <div 
+        <div
           className="space-y-4"
           onMouseEnter={() => setHoverState(true)}
           onMouseLeave={() => setHoverState(false)}
@@ -417,13 +404,12 @@ export default function BroadcastsPage() {
           )}
 
           {!loading && broadcasts.map((broadcast) => (
-            <Card 
-              key={broadcast.id} 
-              className={`transition-all duration-200 cursor-pointer ${
-                selectedBroadcastId === broadcast.id
-                  ? "shadow-lg border-blue-500 bg-blue-50"
-                  : "hover:shadow-md hover:border-gray-300"
-              }`}
+            <Card
+              key={broadcast.id}
+              className={`transition-all duration-200 cursor-pointer ${selectedBroadcastId === broadcast.id
+                ? "shadow-lg border-blue-500 bg-blue-50"
+                : "hover:shadow-md hover:border-gray-300"
+                }`}
               onClick={() => handleBroadcastClick(broadcast.id)}
             >
               <CardContent className="p-4">
@@ -435,9 +421,8 @@ export default function BroadcastsPage() {
                       </Badge>
                       <span className="text-sm text-gray-500">{broadcast.channel}</span>
                       <div className="flex items-center">
-                        <span className={`text-sm font-medium ${
-                          selectedBroadcastId === broadcast.id ? "text-blue-700" : "text-blue-600"
-                        }`}>
+                        <span className={`text-sm font-medium ${selectedBroadcastId === broadcast.id ? "text-blue-700" : "text-blue-600"
+                          }`}>
                           {broadcast.player_name}
                         </span>
                         {broadcast.player_id && (
@@ -453,9 +438,8 @@ export default function BroadcastsPage() {
                         <TimeAgo timestamp={broadcast.timestamp} />
                       </div>
                     </div>
-                    <p className={`mb-2 ${
-                      selectedBroadcastId === broadcast.id ? "text-gray-800 font-medium" : "text-gray-900"
-                    }`}>
+                    <p className={`mb-2 ${selectedBroadcastId === broadcast.id ? "text-gray-800 font-medium" : "text-gray-900"
+                      }`}>
                       {broadcast.content}
                     </p>
                   </div>
