@@ -24,6 +24,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Header } from "../components/header"
+import { ConnectionStatus } from "@/components/connection-status"
 import { useBroadcasts } from "@/hooks/useBroadcasts"
 import { isTestEnvironment } from "@/lib/mock-data"
 
@@ -346,6 +347,9 @@ export default function BroadcastsPage() {
               <span className="ml-2 text-orange-600">🧪 目前使用測試資料，API 連線失敗時會自動切換。</span>
             )}
           </p>
+
+          {/* 連線狀態指示器 */}
+          <ConnectionStatus />
 
           {/* Error Alert */}
           {error && (

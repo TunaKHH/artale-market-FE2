@@ -7,8 +7,121 @@ import {
   isTestEnvironment,
   type MockBroadcastMessage,
 } from "./mock-data"
+import { emitConnectionChange } from "../hooks/useConnectionStatus"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
+// 多端點配置 - 支援故障轉移
+const API_ENDPOINTS = [
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1",
+  "https://maple-market-api.zeabur.app/api/v1",
+  "https://maple-market-api-beta.zeabur.app/api/v1"
+].filter(Boolean) // 移除空值
+
+const API_BASE_URL = API_ENDPOINTS[0] // 預設主要端點
+
+// 端點狀態快取
+interface EndpointStatus {
+  url: string
+  isHealthy: boolean
+  lastChecked: number
+  consecutiveFailures: number
+}
+
+let endpointStatuses: EndpointStatus[] = API_ENDPOINTS.map(url => ({
+  url,
+  isHealthy: true,
+  lastChecked: 0,
+  consecutiveFailures: 0
+}))
+
+// 取得健康的端點
+const getHealthyEndpoint = (): string => {
+  const now = Date.now()
+  const healthyEndpoints = endpointStatuses.filter(status =>
+    status.isHealthy || (now - status.lastChecked > 60000) // 1分鐘後重試
+  )
+
+  if (healthyEndpoints.length === 0) {
+    console.warn("⚠️ 所有端點都不健康，使用第一個端點")
+    return API_ENDPOINTS[0]
+  }
+
+  // 優先選擇主要端點，然後是失敗次數最少的
+  const sorted = healthyEndpoints.sort((a, b) => a.consecutiveFailures - b.consecutiveFailures)
+  return sorted[0].url
+}
+
+// 標記端點為失敗
+const markEndpointFailed = (url: string) => {
+  const status = endpointStatuses.find(s => s.url === url)
+  if (status) {
+    status.consecutiveFailures++
+    status.lastChecked = Date.now()
+    if (status.consecutiveFailures >= 3) {
+      status.isHealthy = false
+      console.warn(`⚠️ 伺服器標記為不健康 (連續失敗 ${status.consecutiveFailures} 次)`)
+    }
+  }
+}
+
+// 標記端點為成功
+const markEndpointSuccess = (url: string) => {
+  const status = endpointStatuses.find(s => s.url === url)
+  if (status) {
+    status.isHealthy = true
+    status.consecutiveFailures = 0
+    status.lastChecked = Date.now()
+  }
+}
+
+// 智能重試 fetch 函數
+const fetchWithFailover = async (
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<Response> => {
+  let lastError: Error | null = null
+  let totalFailoverCount = 0
+
+  // 最多嘗試 3 次 (所有端點)
+  const maxAttempts = 3
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const baseUrl = getHealthyEndpoint()
+    const fullUrl = `${baseUrl}${endpoint}`
+
+    try {
+      console.log(`🔄 [故障轉移] 嘗試伺服器 ${attempt + 1}`)
+
+      const response = await fetch(fullUrl, {
+        ...options,
+        signal: AbortSignal.timeout(10000), // 10秒超時
+      })
+
+      markEndpointSuccess(baseUrl)
+      console.log(`✅ [故障轉移] 成功連接到伺服器`)
+
+      // 發送連線成功事件 (不包含 URL)
+      emitConnectionChange(true, `server_${attempt + 1}`, totalFailoverCount)
+
+      return response
+
+    } catch (error) {
+      console.warn(`❌ [故障轉移] 伺服器 ${attempt + 1} 連線失敗`)
+      markEndpointFailed(baseUrl)
+      lastError = error as Error
+      totalFailoverCount++
+
+      // 發送連線失敗事件 (不包含 URL)
+      emitConnectionChange(false, `server_${attempt + 1}`, totalFailoverCount)
+
+      // 如果不是最後一次嘗試，等待一下再重試
+      if (attempt < maxAttempts - 1) {
+        console.log(`⏳ 等待 ${attempt + 1} 秒後重試...`)
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))) // 指數退避
+      }
+    }
+  }
+
+  throw lastError || new Error("所有 API 端點都無法存取")
+}
 
 // 增強的 API 追蹤 (追蹤錯誤、搜尋和結果)
 const trackApiCall = (endpoint: string, success: boolean, searchTerm?: string, resultCount?: number) => {
@@ -27,7 +140,7 @@ const trackApiCall = (endpoint: string, success: boolean, searchTerm?: string, r
         has_results: (resultCount || 0) > 0,
         endpoint: endpoint
       })
-      
+
       // 特別追蹤無結果搜尋
       if ((resultCount || 0) === 0) {
         ;(window as any).gtag("event", "search_no_results", {
@@ -54,7 +167,7 @@ export class RateLimitError extends Error {
 
 // 取得 API 速率限制資訊
 export async function getRateLimits() {
-  const response = await fetch(`${API_BASE_URL}/rate-limits`)
+  const response = await fetchWithFailover("/rate-limits")
 
   if (!response.ok) {
     throw new Error(`速率限制資訊請求失敗: ${response.status} ${response.statusText}`)
@@ -266,22 +379,20 @@ export async function getBroadcasts({
   }
 
   try {
-    console.log("📡 [API] 發送請求到:", `${API_BASE_URL}/broadcasts/?${params}`)
+    console.log("📡 [API] 發送請求:", `/broadcasts/?${params}`)
 
-    const response = await fetch(`${API_BASE_URL}/broadcasts/?${params}`, {
+    const response = await fetchWithFailover(`/broadcasts/?${params}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
-      // 設置超時時間
-      signal: AbortSignal.timeout(10000), // 10秒超時
     })
 
     const endpoint = "/broadcasts"
 
     const result = await handleApiResponse(response, endpoint)
     const resultCount = result?.total || result?.messages?.length || 0
-    
+
     // 追蹤搜尋和篩選行為
     if (keyword) {
       trackApiCall(`${endpoint}/search`, response.ok, keyword, resultCount)
@@ -329,9 +440,7 @@ export async function getBroadcastStats(hours = 24): Promise<BroadcastStats> {
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/broadcasts/stats/?hours=${hours}`, {
-      signal: AbortSignal.timeout(10000), // 10秒超時
-    })
+    const response = await fetchWithFailover(`/broadcasts/stats/?hours=${hours}`)
     const endpoint = "/broadcasts/stats"
 
     // 追蹤統計資料查詢
@@ -370,9 +479,7 @@ export async function getBroadcastById(messageId: number): Promise<BroadcastMess
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/broadcasts/${messageId}`, {
-      signal: AbortSignal.timeout(10000), // 10秒超時
-    })
+    const response = await fetchWithFailover(`/broadcasts/${messageId}`)
     const result = await handleApiResponse(response)
     console.log("✅ [單一廣播] 請求成功:", result)
     return result
@@ -409,9 +516,7 @@ export async function getPlayerBroadcasts(playerName: string, hours = 24): Promi
   })
 
   try {
-    const response = await fetch(`${API_BASE_URL}/broadcasts/players/${encodeURIComponent(playerName)}?${params}`, {
-      signal: AbortSignal.timeout(10000), // 10秒超時
-    })
+    const response = await fetchWithFailover(`/broadcasts/players/${encodeURIComponent(playerName)}?${params}`)
     const result = await handleApiResponse(response)
     console.log("✅ [玩家廣播] 請求成功:", result)
     return result
@@ -469,9 +574,7 @@ export async function searchBroadcasts({
 
   try {
     // 使用一般端點而非專門的搜尋端點
-    const response = await fetch(`${API_BASE_URL}/broadcasts/?${params}`, {
-      signal: AbortSignal.timeout(10000), // 10秒超時
-    })
+    const response = await fetchWithFailover(`/broadcasts/?${params}`)
     const result = await handleApiResponse(response)
     console.log("✅ [搜尋] 請求成功:", result)
     return result
