@@ -11,6 +11,11 @@ export const metadata: Metadata = {
   title: "Artale 廣播 - 楓之谷廣播分類平台",
   description: "即時監控 Artale 遊戲廣播訊息，自動分類收購、販售、組隊等資訊",
   generator: "Tuna",
+  icons: {
+    icon: [
+      { url: '/icon.png', type: 'image/png' },
+    ],
+  },
 }
 
 export default function RootLayout({
