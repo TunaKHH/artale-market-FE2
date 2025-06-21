@@ -15,6 +15,7 @@ import {
   X,
   Pause,
   Play,
+  TestTube,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -24,6 +25,7 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Header } from "../components/header"
 import { useBroadcasts } from "@/hooks/useBroadcasts"
+import { isTestEnvironment } from "@/lib/mock-data"
 
 // 時間格式化組件 - 避免 hydration 錯誤
 const TimeAgo = ({ timestamp }: { timestamp: string }) => {
@@ -163,10 +165,12 @@ export default function BroadcastsPage() {
   const [searchInput, setSearchInput] = useState("")
   const [mounted, setMounted] = useState(false)
   const [selectedBroadcastId, setSelectedBroadcastId] = useState<number | null>(null)
+  const [showTestMode, setShowTestMode] = useState(false)
 
   // 客戶端掛載檢測
   useEffect(() => {
     setMounted(true)
+    setShowTestMode(isTestEnvironment())
   }, [])
 
   // 使用自定義 Hook 取得廣播資料
@@ -215,6 +219,18 @@ export default function BroadcastsPage() {
   // 處理卡片點擊
   const handleBroadcastClick = (broadcastId: number) => {
     setSelectedBroadcastId((prev) => (prev === broadcastId ? null : broadcastId))
+  }
+
+  // 處理分類 Badge 點擊
+  const handleBadgeClick = (e: React.MouseEvent, messageType: string) => {
+    e.stopPropagation() // 阻止事件冒泡，避免觸發卡片點擊
+
+    // 如果當前已經是該分類，則切換到全部
+    const newMessageType = filters.messageType === messageType ? "all" : messageType
+    updateFilters({ messageType: newMessageType })
+
+    // 提供視覺反饋
+    console.log(`🏷️ 切換到分類: ${newMessageType === "all" ? "全部" : getBadgeText(newMessageType)}`)
   }
 
   // 取得廣播類型選項
@@ -276,6 +292,13 @@ export default function BroadcastsPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <h1 className="text-3xl font-bold text-foreground">廣播訊息</h1>
+              {/* 測試模式指示器 */}
+              {showTestMode && (
+                <Badge variant="outline" className="flex items-center space-x-1 text-orange-600 border-orange-300">
+                  <TestTube className="w-3 h-3" />
+                  <span>測試模式</span>
+                </Badge>
+              )}
             </div>
             <div className="flex items-center space-x-2">
               <Button
@@ -319,13 +342,21 @@ export default function BroadcastsPage() {
           <p className="text-muted-foreground mb-6">
             即時顯示遊戲內的廣播訊息( 30 分鐘內 )，包括交易、組隊、公會招募等。 目前顯示{" "}
             <span className="font-semibold text-primary">{totalCount}</span> 條廣播訊息。
+            {showTestMode && (
+              <span className="ml-2 text-orange-600">🧪 目前使用測試資料，API 連線失敗時會自動切換。</span>
+            )}
           </p>
 
           {/* Error Alert */}
           {error && (
             <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>
+                {error}
+                {showTestMode && (
+                  <div className="mt-2 text-sm">💡 由於您在測試環境中，系統已自動使用假資料繼續運作。</div>
+                )}
+              </AlertDescription>
             </Alert>
           )}
 
@@ -406,7 +437,14 @@ export default function BroadcastsPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
-                        <Badge variant={getBadgeColor(broadcast.message_type) as any}>
+                        <Badge
+                          variant={getBadgeColor(broadcast.message_type) as any}
+                          className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-sm ${
+                            filters.messageType === broadcast.message_type ? "ring-2 ring-primary ring-offset-1" : ""
+                          }`}
+                          onClick={(e) => handleBadgeClick(e, broadcast.message_type)}
+                          title={`點擊篩選「${getBadgeText(broadcast.message_type)}」類型的訊息`}
+                        >
                           {getBadgeText(broadcast.message_type)}
                         </Badge>
                         <span className="text-sm text-muted-foreground">{broadcast.channel}</span>
@@ -446,6 +484,9 @@ export default function BroadcastsPage() {
         {!loading && broadcasts.length === 0 && (
           <div className="text-center py-12">
             <p className="text-muted-foreground">{error ? "無法載入廣播訊息" : "找不到符合條件的廣播訊息。"}</p>
+            {showTestMode && error && (
+              <p className="text-sm text-orange-600 mt-2">🧪 測試模式：如果看到此訊息，表示假資料生成可能有問題。</p>
+            )}
           </div>
         )}
 
