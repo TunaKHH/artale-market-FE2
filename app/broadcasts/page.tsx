@@ -312,7 +312,9 @@ export default function BroadcastsPage() {
                 ) : (
                   <>
                     <Pause className="w-4 h-4" />
-                    <span>暫停</span>
+                    <span>
+                      {countdown > 0 ? `暫停 (${countdown}s)` : "暫停"}
+                    </span>
                   </>
                 )}
               </Button>
@@ -329,25 +331,11 @@ export default function BroadcastsPage() {
             </div>
           </div>
 
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-600 mb-6">
             即時顯示遊戲內的廣播訊息( 30 分鐘內 )，包括交易、組隊、公會招募等。 目前顯示{" "}
             <span className="font-semibold text-blue-600">{totalCount}</span> 條廣播訊息。
           </p>
 
-          {/* Auto-refresh status */}
-          <div className="mb-6">
-            <p className="text-sm text-center">
-              {isPaused ? (
-                <span className="text-orange-600 font-medium">🔸 自動刷新已暫停</span>
-              ) : isHovering ? (
-                <span className="text-purple-600 font-medium">⏸️ 滑鼠懸停時暫停刷新</span>
-              ) : countdown > 0 ? (
-                <span className="text-blue-600">🔄 廣播訊息將在 <span className="font-medium">{countdown}</span> 秒後自動更新</span>
-              ) : (
-                <span className="text-gray-500">🔄 廣播訊息每30秒自動更新一次</span>
-              )}
-            </p>
-          </div>
 
           {/* Error Alert */}
           {error && (
