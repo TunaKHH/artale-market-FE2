@@ -11,9 +11,9 @@ import { emitConnectionChange } from "../hooks/useConnectionStatus"
 
 // 多端點配置 - 支援故障轉移
 const API_ENDPOINTS = [
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1",
-  "https://maple-market-api.zeabur.app/api/v1",
-  "https://maple-market-api-beta.zeabur.app/api/v1"
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
+  "https://maple-market-api.zeabur.app",
+  "https://maple-market-api-beta.zeabur.app"
 ].filter(Boolean) // 移除空值
 
 const API_BASE_URL = API_ENDPOINTS[0] // 預設主要端點
@@ -85,7 +85,7 @@ const fetchWithFailover = async (
   const maxAttempts = 3
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const baseUrl = getHealthyEndpoint()
-    const fullUrl = `${baseUrl}${endpoint}`
+    const fullUrl = `${baseUrl}/api/v1${endpoint}`
 
     try {
       console.log(`🔄 [故障轉移] 嘗試伺服器 ${attempt + 1}`)
