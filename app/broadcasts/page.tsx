@@ -160,10 +160,11 @@ const FavoriteButton = ({ broadcast, onFavoriteChange }: { broadcast: any; onFav
   return (
     <button
       onClick={handleFavorite}
-      className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-all duration-200 hover:scale-105 ${isFavorited
+      className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-all duration-200 hover:scale-105 ${
+        isFavorited
           ? "text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900 dark:text-blue-400"
           : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
-        }`}
+      }`}
       title={isFavorited ? "取消收藏" : "收藏此訊息"}
     >
       <Bookmark className={`w-4 h-4 ${isFavorited ? "fill-current" : ""}`} />
@@ -385,12 +386,13 @@ export default function BroadcastsPage() {
                 onClick={togglePause}
                 variant={isPaused || isHovering ? "default" : "outline"}
                 size="sm"
-                className={`flex items-center space-x-2 ${isPaused
+                className={`flex items-center space-x-2 ${
+                  isPaused
                     ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
                     : isHovering
                       ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600"
                       : "border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950"
-                  }`}
+                }`}
                 title={isPaused ? "恢復自動刷新" : isHovering ? "滑鼠懸停時自動暫停" : "暫停自動刷新"}
               >
                 {isPaused || isHovering ? (
@@ -506,7 +508,7 @@ export default function BroadcastsPage() {
                 <div className="flex items-center space-x-1">
                   {type.id === "favorites" && <Bookmark className="w-3 h-3" />}
                   <span>{type.name}</span>
-                  {type.count > 0 && (
+                  {type.id === "favorites" && type.count > 0 && (
                     <span className="text-xs bg-muted-foreground/20 px-1.5 py-0.5 rounded-full">{type.count}</span>
                   )}
                 </div>
@@ -525,10 +527,11 @@ export default function BroadcastsPage() {
           {displayMessages.map((broadcast) => (
             <Card
               key={broadcast.id}
-              className={`transition-all duration-200 cursor-pointer ${selectedBroadcastId === broadcast.id
+              className={`transition-all duration-200 cursor-pointer ${
+                selectedBroadcastId === broadcast.id
                   ? "shadow-lg border-primary bg-primary/5"
                   : "hover:shadow-md hover:border-muted-foreground"
-                } ${filters.messageType === "favorites" ? "border-blue-200 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-950/30" : ""}`}
+              } ${filters.messageType === "favorites" ? "border-blue-200 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-950/30" : ""}`}
               onClick={() => handleBroadcastClick(broadcast.id)}
             >
               <CardContent className="p-4">
@@ -537,8 +540,9 @@ export default function BroadcastsPage() {
                     <div className="flex items-center space-x-2 mb-2">
                       <Badge
                         variant={getBadgeColor(broadcast.message_type) as any}
-                        className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-sm ${filters.messageType === broadcast.message_type ? "ring-2 ring-primary ring-offset-1" : ""
-                          }`}
+                        className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-sm ${
+                          filters.messageType === broadcast.message_type ? "ring-2 ring-primary ring-offset-1" : ""
+                        }`}
                         onClick={(e) => handleBadgeClick(e, broadcast.message_type)}
                         title={`點擊篩選「${getBadgeText(broadcast.message_type)}」類型的訊息`}
                       >
@@ -547,8 +551,9 @@ export default function BroadcastsPage() {
                       <span className="text-sm text-muted-foreground">{broadcast.channel}</span>
                       <div className="flex items-center">
                         <span
-                          className={`text-sm font-medium ${selectedBroadcastId === broadcast.id ? "text-primary" : "text-primary"
-                            }`}
+                          className={`text-sm font-medium ${
+                            selectedBroadcastId === broadcast.id ? "text-primary" : "text-primary"
+                          }`}
                         >
                           {broadcast.player_name}
                         </span>
@@ -569,8 +574,9 @@ export default function BroadcastsPage() {
                       )}
                     </div>
                     <p
-                      className={`mb-2 ${selectedBroadcastId === broadcast.id ? "text-foreground font-medium" : "text-foreground"
-                        }`}
+                      className={`mb-2 ${
+                        selectedBroadcastId === broadcast.id ? "text-foreground font-medium" : "text-foreground"
+                      }`}
                     >
                       {broadcast.content}
                     </p>

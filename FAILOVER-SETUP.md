@@ -32,21 +32,21 @@
 5. 複製 Zeabur 提供的 CNAME 值
 
 ### 2. DNS 設定 (以 Cloudflare 為例)
-```
+\`\`\`
 類型: CNAME
 名稱: api
 目標: [Zeabur 提供的 CNAME 值]
 TTL: 300 (5分鐘)
 代理狀態: 橙雲 (Proxied) 或 灰雲 (DNS only)
-```
+\`\`\`
 
 ### 3. 更新環境變數
 設定 Custom Domain 後，更新 `.env.local`:
-```bash
+\`\`\`bash
 # 使用自定義域名作為主要端點
 NEXT_PUBLIC_API_URL=https://api.your-domain.com/api/v1
 NEXT_PUBLIC_IS_PRODUCTION=true
-```
+\`\`\`
 
 ## 📱 用戶介面
 
@@ -57,19 +57,19 @@ NEXT_PUBLIC_IS_PRODUCTION=true
 - **3次失敗後**: 紅色提示框，提供重新整理按鈕
 
 ### 監控資訊
-```typescript
+\`\`\`typescript
 // 瀏覽器控制台可看到詳細日誌 (不顯示敏感的 URL 資訊)
 🔄 [故障轉移] 嘗試伺服器 1
 ❌ [故障轉移] 伺服器 1 連線失敗
 ⏳ 等待 1 秒後重試...
 🔄 [故障轉移] 嘗試伺服器 2
 ✅ [故障轉移] 成功連接到伺服器
-```
+\`\`\`
 
 ## 🔧 開發者選項
 
 ### 測試故障轉移
-```javascript
+\`\`\`javascript
 // 在瀏覽器控制台執行
 // 模擬主要端點失敗
 localStorage.setItem('simulate-api-failure', 'true')
@@ -77,13 +77,13 @@ localStorage.setItem('simulate-api-failure', 'true')
 
 // 恢復正常
 localStorage.removeItem('simulate-api-failure')
-```
+\`\`\`
 
 ### 查看端點狀態
-```javascript
+\`\`\`javascript
 // 在瀏覽器控制台查看當前端點健康狀態
 window.dispatchEvent(new CustomEvent('debug-endpoint-status'))
-```
+\`\`\`
 
 ## 📊 效能影響
 
@@ -100,16 +100,16 @@ window.dispatchEvent(new CustomEvent('debug-endpoint-status'))
 
 ### 自定義端點配置
 修改 `lib/api.ts` 中的 `API_ENDPOINTS` 陣列：
-```typescript
+\`\`\`typescript
 const API_ENDPOINTS = [
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1",
   "https://your-backup-api-1.com/api/v1",
   "https://your-backup-api-2.com/api/v1"
 ]
-```
+\`\`\`
 
 ### 調整重試策略
-```typescript
+\`\`\`typescript
 // 修改重試次數 (預設: 3)
 const maxRetries = 5
 
@@ -118,7 +118,7 @@ const healthCheckInterval = 30000
 
 // 修改連續失敗閾值 (預設: 3)
 const failureThreshold = 5
-```
+\`\`\`
 
 ## 🎯 預期效果
 
@@ -136,10 +136,10 @@ const failureThreshold = 5
 3. **Custom Domain 不生效**: 確認 DNS 傳播完成 (最多 48 小時)
 
 ### 除錯技巧
-```bash
+\`\`\`bash
 # 檢查 DNS 解析
 nslookup api.your-domain.com
 
 # 測試端點可用性
 curl -I https://api.your-domain.com/api/v1/broadcasts/
-```
+\`\`\`
