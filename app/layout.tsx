@@ -7,7 +7,7 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Artale 廣播監控 - 楓之谷 Worlds 訊息分類平台",
+  title: "Artale 廣播 - 楓之谷廣播分類平台",
   description: "即時監控 Artale 遊戲廣播訊息，自動分類收購、販售、組隊等資訊",
   generator: "Tuna",
 }
@@ -18,7 +18,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   const gaId = process.env.NEXT_PUBLIC_GA_ID
-  
+
   return (
     <html lang="zh-TW">
       <body className={inter.className} suppressHydrationWarning>
