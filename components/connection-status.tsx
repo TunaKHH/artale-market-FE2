@@ -4,11 +4,13 @@ import { useConnectionStatus } from "../hooks/useConnectionStatus"
 import { Alert, AlertDescription } from "./ui/alert"
 import { Button } from "./ui/button"
 import { Wifi, WifiOff, RefreshCw } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 
 export function ConnectionStatus() {
   const { isConnected, failoverCount, lastFailover } = useConnectionStatus()
   const [showSuccessAlert, setShowSuccessAlert] = useState(true)
+  const [canShowReconnectAlert, setCanShowReconnectAlert] = useState(true)
+  const lastReconnectTimeRef = useRef(0)
 
   // 當連線恢復且有故障轉移時，3秒後自動隱藏成功提示
   useEffect(() => {
@@ -27,6 +29,28 @@ export function ConnectionStatus() {
       setShowSuccessAlert(true)
     }
   }, [failoverCount])
+
+  // 處理重新連線提示的頻率限制
+  useEffect(() => {
+    if (!isConnected && failoverCount > 0 && failoverCount < 3) {
+      const now = Date.now()
+      const timeSinceLastShow = now - lastReconnectTimeRef.current
+
+      if (timeSinceLastShow >= 5000) {
+        setCanShowReconnectAlert(true)
+        lastReconnectTimeRef.current = now
+      } else {
+        setCanShowReconnectAlert(false)
+        // 設定計時器，在剩餘時間後再次允許顯示
+        const remainingTime = 5000 - timeSinceLastShow
+        const timer = setTimeout(() => {
+          setCanShowReconnectAlert(true)
+        }, remainingTime)
+
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [isConnected, failoverCount])
 
   // 如果連線正常且沒有故障轉移，不顯示任何內容
   if (isConnected && failoverCount === 0) {
@@ -73,27 +97,32 @@ export function ConnectionStatus() {
     )
   }
 
-  // 顯示連線重試中的提示
-  return (
-    <Alert className="border-orange-200 bg-orange-50 text-orange-800 mb-4">
-      <RefreshCw className="h-4 w-4 animate-spin" />
-      <AlertDescription className="flex items-center justify-between">
-        <div>
-          <div className="font-medium">正在重新連線...</div>
-          <div className="text-sm mt-1">
-            正在嘗試連接到其他伺服器 ({failoverCount}/3)
+  // 顯示連線重試中的提示 - 有頻率限制
+  if (!isConnected && failoverCount > 0 && failoverCount < 3 && canShowReconnectAlert) {
+    return (
+      <Alert className="border-orange-200 bg-orange-50 text-orange-800 mb-4">
+        <RefreshCw className="h-4 w-4 animate-spin" />
+        <AlertDescription className="flex items-center justify-between">
+          <div>
+            <div className="font-medium">正在重新連線...</div>
+            <div className="text-sm mt-1">
+              正在嘗試連接到其他伺服器 ({failoverCount}/3)
+            </div>
           </div>
-        </div>
-        <Button
-          onClick={() => window.location.reload()}
-          size="sm"
-          variant="outline"
-          className="ml-4 border-orange-300 text-orange-800 hover:bg-orange-100"
-        >
-          <RefreshCw className="w-4 h-4 mr-1" />
-          重新整理
-        </Button>
-      </AlertDescription>
-    </Alert>
-  )
+          <Button
+            onClick={() => window.location.reload()}
+            size="sm"
+            variant="outline"
+            className="ml-4 border-orange-300 text-orange-800 hover:bg-orange-100"
+          >
+            <RefreshCw className="w-4 h-4 mr-1" />
+            重新整理
+          </Button>
+        </AlertDescription>
+      </Alert>
+    )
+  }
+
+  // 其他情況不顯示任何內容
+  return null
 }
