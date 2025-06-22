@@ -3,21 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import {
-  Clock,
-  Search,
-  RefreshCw,
-  AlertCircle,
-  Copy,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  X,
-  Pause,
-  Play,
-  TestTube,
-  Bookmark,
-} from "lucide-react"
+import { Clock, Search, AlertCircle, Copy, Check, ChevronLeft, ChevronRight, X, TestTube, Bookmark } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -315,18 +301,14 @@ export default function BroadcastsPage() {
     rateLimitError,
     filters,
     updateFilters,
-    refresh,
     hasNext,
     hasPrev,
     currentPage,
     goToPage,
     clearRateLimitError,
-    isPaused,
-    togglePause,
-    countdown,
   } = useBroadcasts({
     autoRefresh: true,
-    refreshInterval: 30000,
+    refreshInterval: 3000,
   })
 
   // 處理搜尋輸入 - 改為即時搜尋
@@ -435,22 +417,6 @@ export default function BroadcastsPage() {
               <div className="flex items-center space-x-3">
                 <h1 className="text-3xl font-bold text-foreground">廣播訊息</h1>
               </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  disabled
-                  className="flex items-center space-x-2 px-3 py-1.5 text-sm border border-orange-300 rounded-md bg-orange-50 text-orange-400"
-                >
-                  <Pause className="w-4 h-4" />
-                  <span>暫停</span>
-                </button>
-                <button
-                  disabled
-                  className="flex items-center space-x-2 px-3 py-1.5 text-sm border border-muted rounded-md bg-muted text-muted-foreground"
-                >
-                  <div className="w-4 h-4 border-2 border-muted-foreground rounded-full" />
-                  <span>刷新</span>
-                </button>
-              </div>
             </div>
             <p className="text-muted-foreground mb-6">載入中...</p>
           </div>
@@ -482,48 +448,6 @@ export default function BroadcastsPage() {
                 </Badge>
               )}
             </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                onClick={togglePause}
-                variant={isPaused ? "default" : "outline"}
-                size="sm"
-                className={`flex items-center space-x-2 ${
-                  isPaused
-                    ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
-                    : "border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950"
-                }`}
-                title={isPaused ? "恢復自動刷新" : "暫停自動刷新"}
-              >
-                {isPaused ? (
-                  <>
-                    <Play className="w-4 h-4" />
-                    <span>恢復</span>
-                  </>
-                ) : (
-                  <>
-                    <Pause className="w-4 h-4" />
-                    <span>{countdown > 0 ? `暫停 (${countdown}s)` : "暫停"}</span>
-                  </>
-                )}
-              </Button>
-              <Button
-                onClick={() => {
-                  refresh()
-                  analytics.trackAction("manual_refresh", "user_behavior", {
-                    current_filter: filters.messageType,
-                    has_search: !!filters.keyword,
-                    total_messages: totalCount,
-                  })
-                }}
-                variant="outline"
-                size="sm"
-                disabled={loading}
-                className="flex items-center space-x-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                <span>刷新</span>
-              </Button>
-            </div>
           </div>
 
           <p className="text-muted-foreground mb-6">
@@ -534,7 +458,7 @@ export default function BroadcastsPage() {
               </>
             ) : (
               <>
-                即時顯示遊戲內的廣播訊息( 30 分鐘內 )，包括交易、組隊、公會招募等。 目前顯示{" "}
+                即時顯示遊戲內的廣播訊息，每 3 秒自動更新，包括交易、組隊、公會招募等。 目前顯示{" "}
                 <span className="font-semibold text-primary">{totalCount}</span> 條廣播訊息。
                 {showTestMode && (
                   <span className="ml-2 text-orange-600">🧪 目前使用測試資料，API 連線失敗時會自動切換。</span>

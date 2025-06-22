@@ -11,7 +11,7 @@ interface UseBroadcastsOptions {
 
 export function useBroadcasts({
   autoRefresh = true,
-  refreshInterval = 30000, // 30秒
+  refreshInterval = 3000, // 3秒
   initialPageSize = 50,
 }: UseBroadcastsOptions = {}) {
   const [broadcasts, setBroadcasts] = useState<BroadcastMessage[]>([])
