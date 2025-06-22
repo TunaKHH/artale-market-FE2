@@ -253,6 +253,7 @@ export default function BroadcastsPage() {
   const [pageStartTime, setPageStartTime] = useState<number>(0)
   const [searchHistory, setSearchHistory] = useState<string[]>([])
   const [showSearchHistory, setShowSearchHistory] = useState(false)
+  const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(-1)
 
   // 分析追蹤
   const analytics = useAnalytics()
@@ -332,6 +333,7 @@ export default function BroadcastsPage() {
     setSearchInput(term)
     updateFilters({ keyword: term })
     setShowSearchHistory(false)
+    setSelectedHistoryIndex(-1)
 
     analytics.trackAction("use_search_history", "user_behavior", {
       search_term: term,
@@ -363,12 +365,13 @@ export default function BroadcastsPage() {
   const clearSearch = useCallback(() => {
     setSearchInput("")
     updateFilters({ keyword: "" })
-    setShowSearchHistory(false) // 添加這行
+    setShowSearchHistory(false)
+    setSelectedHistoryIndex(-1)
     analytics.trackAction("clear_search", "search", {
       previous_keyword: filters.keyword,
       result_count: broadcasts.length,
     })
-  }, [analytics, filters.keyword, broadcasts.length, updateFilters, setShowSearchHistory])
+  }, [analytics, filters.keyword, broadcasts.length, updateFilters])
 
   // 處理搜尋輸入 - 改為即時搜尋
   const handleInputChange = (value: string) => {
@@ -412,8 +415,42 @@ export default function BroadcastsPage() {
 
   // 處理鍵盤事件
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSearch()
+    if (!showSearchHistory || searchHistory.length === 0) {
+      if (e.key === "Enter") {
+        handleSearch()
+      }
+      return
+    }
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault()
+        setSelectedHistoryIndex((prev) => 
+          prev < searchHistory.length - 1 ? prev + 1 : prev
+        )
+        if (!showSearchHistory) {
+          setShowSearchHistory(true)
+        }
+        break
+      
+      case "ArrowUp":
+        e.preventDefault()
+        setSelectedHistoryIndex((prev) => prev > 0 ? prev - 1 : -1)
+        break
+      
+      case "Enter":
+        e.preventDefault()
+        if (selectedHistoryIndex >= 0 && selectedHistoryIndex < searchHistory.length) {
+          useHistorySearch(searchHistory[selectedHistoryIndex])
+        } else {
+          handleSearch()
+        }
+        break
+      
+      case "Escape":
+        setShowSearchHistory(false)
+        setSelectedHistoryIndex(-1)
+        break
     }
   }
 
@@ -578,8 +615,16 @@ export default function BroadcastsPage() {
                     value={searchInput}
                     onChange={(e) => handleInputChange(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    onFocus={() => setShowSearchHistory(searchHistory.length > 0)}
-                    onBlur={() => setTimeout(() => setShowSearchHistory(false), 200)}
+                    onFocus={() => {
+                      if (searchHistory.length > 0) {
+                        setShowSearchHistory(true)
+                        setSelectedHistoryIndex(-1)
+                      }
+                    }}
+                    onBlur={() => setTimeout(() => {
+                      setShowSearchHistory(false)
+                      setSelectedHistoryIndex(-1)
+                    }, 200)}
                   />
                   {searchHistory.length > 0 && (
                     <button
@@ -608,19 +653,23 @@ export default function BroadcastsPage() {
                         <button
                           key={index}
                           onClick={() => useHistorySearch(term)}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center justify-between group"
+                          className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between group ${
+                            index === selectedHistoryIndex 
+                              ? "bg-primary text-primary-foreground" 
+                              : "hover:bg-muted"
+                          }`}
                         >
                           <span className="truncate">{term}</span>
-                          <Search className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <Search className={`w-3 h-3 transition-opacity ${
+                            index === selectedHistoryIndex 
+                              ? "text-primary-foreground opacity-100" 
+                              : "text-muted-foreground opacity-0 group-hover:opacity-100"
+                          }`} />
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
-                <Button onClick={handleSearch} variant="outline" size="sm" className="flex items-center space-x-1">
-                  <Search className="w-4 h-4" />
-                  <span>搜尋</span>
-                </Button>
               </div>
             </div>
           )}
