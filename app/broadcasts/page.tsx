@@ -90,7 +90,11 @@ const TimeAgo = ({ timestamp }: { timestamp: string }) => {
 }
 
 // 玩家複製按鈕組件
-const PlayerCopyButton = ({ playerName, playerId, analytics }: { playerName: string; playerId?: string; analytics: any }) => {
+const PlayerCopyButton = ({
+  playerName,
+  playerId,
+  analytics,
+}: { playerName: string; playerId?: string; analytics: any }) => {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
@@ -101,14 +105,14 @@ const PlayerCopyButton = ({ playerName, playerId, analytics }: { playerName: str
       setTimeout(() => setCopied(false), 2000) // 2秒後恢復原狀
 
       // 追蹤複製行為
-      analytics.trackUserBehavior('player_name_copy', {
+      analytics.trackUserBehavior("player_name_copy", {
         player_name: playerName,
         has_player_id: !!playerId,
-        copy_format: playerId ? 'name_with_id' : 'name_only'
+        copy_format: playerId ? "name_with_id" : "name_only",
       })
     } catch (err) {
       console.error("複製失敗:", err)
-      analytics.trackError('copy_failed', `Failed to copy player name: ${playerName}`)
+      analytics.trackError("copy_failed", `Failed to copy player name: ${playerName}`)
     }
   }
 
@@ -124,7 +128,11 @@ const PlayerCopyButton = ({ playerName, playerId, analytics }: { playerName: str
 }
 
 // 收藏按鈕組件
-const FavoriteButton = ({ broadcast, onFavoriteChange, analytics }: { broadcast: any; onFavoriteChange?: () => void; analytics?: any }) => {
+const FavoriteButton = ({
+  broadcast,
+  onFavoriteChange,
+  analytics,
+}: { broadcast: any; onFavoriteChange?: () => void; analytics?: any }) => {
   const [isFavorited, setIsFavorited] = useState(false)
 
   // 檢查是否已收藏
@@ -148,10 +156,10 @@ const FavoriteButton = ({ broadcast, onFavoriteChange, analytics }: { broadcast:
 
         // 追蹤取消收藏
         if (analytics) {
-          analytics.trackUserBehavior('unfavorite', {
+          analytics.trackUserBehavior("unfavorite", {
             broadcast_id: broadcast.id,
             player_name: broadcast.player_name,
-            message_type: broadcast.message_type
+            message_type: broadcast.message_type,
           })
         }
       } else {
@@ -167,11 +175,11 @@ const FavoriteButton = ({ broadcast, onFavoriteChange, analytics }: { broadcast:
 
         // 追蹤收藏行為
         if (analytics) {
-          analytics.trackUserBehavior('favorite', {
+          analytics.trackUserBehavior("favorite", {
             broadcast_id: broadcast.id,
             player_name: broadcast.player_name,
             message_type: broadcast.message_type,
-            content_length: broadcast.content.length
+            content_length: broadcast.content.length,
           })
         }
       }
@@ -188,10 +196,11 @@ const FavoriteButton = ({ broadcast, onFavoriteChange, analytics }: { broadcast:
   return (
     <button
       onClick={handleFavorite}
-      className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-all duration-200 hover:scale-105 ${isFavorited
+      className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-all duration-200 hover:scale-105 ${
+        isFavorited
           ? "text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900 dark:text-blue-400"
           : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
-        }`}
+      }`}
       title={isFavorited ? "取消收藏" : "收藏此訊息"}
     >
       <Bookmark className={`w-4 h-4 ${isFavorited ? "fill-current" : ""}`} />
@@ -268,9 +277,9 @@ export default function BroadcastsPage() {
     setPageStartTime(Date.now())
 
     // 追蹤頁面瀏覽
-    analytics.trackPageView('broadcasts', {
+    analytics.trackPageView("broadcasts", {
       test_mode: isTestEnvironment(),
-      auto_refresh: true
+      auto_refresh: true,
     })
   }, [])
 
@@ -279,12 +288,12 @@ export default function BroadcastsPage() {
     const handleBeforeUnload = () => {
       if (pageStartTime > 0) {
         const timeSpent = Math.floor((Date.now() - pageStartTime) / 1000)
-        analytics.trackTimeSpent('broadcasts', timeSpent)
+        analytics.trackTimeSpent("broadcasts", timeSpent)
       }
     }
 
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
   }, [pageStartTime, analytics])
 
   // 更新收藏數量
@@ -315,8 +324,6 @@ export default function BroadcastsPage() {
     isPaused,
     togglePause,
     countdown,
-    isHovering,
-    setHoverState,
   } = useBroadcasts({
     autoRefresh: true,
     refreshInterval: 30000,
@@ -335,10 +342,10 @@ export default function BroadcastsPage() {
     // 追蹤搜尋行為
     if (searchTerm) {
       analytics.trackSearch(searchTerm, filters.messageType, broadcasts.length)
-      analytics.trackFeatureUsage('search', {
+      analytics.trackFeatureUsage("search", {
         search_length: searchTerm.length,
-        has_filters: filters.messageType !== 'all',
-        current_message_type: filters.messageType
+        has_filters: filters.messageType !== "all",
+        current_message_type: filters.messageType,
       })
     }
   }
@@ -356,10 +363,10 @@ export default function BroadcastsPage() {
     setSelectedBroadcastId((prev) => (prev === broadcastId ? null : broadcastId))
 
     // 追蹤卡片互動
-    analytics.trackUserBehavior('broadcast_card_click', {
-      action: isExpanding ? 'expand' : 'collapse',
+    analytics.trackUserBehavior("broadcast_card_click", {
+      action: isExpanding ? "expand" : "collapse",
       broadcast_id: broadcastId,
-      current_filter: filters.messageType
+      current_filter: filters.messageType,
     })
   }
 
@@ -372,11 +379,11 @@ export default function BroadcastsPage() {
     updateFilters({ messageType: newMessageType })
 
     // 追蹤篩選行為
-    analytics.trackFilter('message_type', newMessageType)
-    analytics.trackUserBehavior('badge_click', {
+    analytics.trackFilter("message_type", newMessageType)
+    analytics.trackUserBehavior("badge_click", {
       from_type: filters.messageType,
       to_type: newMessageType,
-      action: newMessageType === 'all' ? 'clear_filter' : 'apply_filter'
+      action: newMessageType === "all" ? "clear_filter" : "apply_filter",
     })
 
     // 提供視覺反饋
@@ -462,20 +469,19 @@ export default function BroadcastsPage() {
             <div className="flex items-center space-x-2">
               <Button
                 onClick={togglePause}
-                variant={isPaused || isHovering ? "default" : "outline"}
+                variant={isPaused ? "default" : "outline"}
                 size="sm"
-                className={`flex items-center space-x-2 ${isPaused
+                className={`flex items-center space-x-2 ${
+                  isPaused
                     ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
-                    : isHovering
-                      ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600"
-                      : "border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950"
-                  }`}
-                title={isPaused ? "恢復自動刷新" : isHovering ? "滑鼠懸停時自動暫停" : "暫停自動刷新"}
+                    : "border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950"
+                }`}
+                title={isPaused ? "恢復自動刷新" : "暫停自動刷新"}
               >
-                {isPaused || isHovering ? (
+                {isPaused ? (
                   <>
                     <Play className="w-4 h-4" />
-                    <span>{isPaused ? "恢復" : "懸停中"}</span>
+                    <span>恢復</span>
                   </>
                 ) : (
                   <>
@@ -487,10 +493,10 @@ export default function BroadcastsPage() {
               <Button
                 onClick={() => {
                   refresh()
-                  analytics.trackUserBehavior('manual_refresh', {
+                  analytics.trackUserBehavior("manual_refresh", {
                     current_filter: filters.messageType,
                     has_search: !!filters.keyword,
-                    total_messages: totalCount
+                    total_messages: totalCount,
                   })
                 }}
                 variant="outline"
@@ -602,7 +608,7 @@ export default function BroadcastsPage() {
         </Tabs>
 
         {/* Broadcasts List */}
-        <div className="space-y-4" onMouseEnter={() => setHoverState(true)} onMouseLeave={() => setHoverState(false)}>
+        <div className="space-y-4">
           {loading &&
             filters.messageType !== "favorites" &&
             // 顯示載入中骨架
@@ -611,10 +617,11 @@ export default function BroadcastsPage() {
           {displayMessages.map((broadcast) => (
             <Card
               key={broadcast.id}
-              className={`transition-all duration-200 cursor-pointer ${selectedBroadcastId === broadcast.id
+              className={`transition-all duration-200 cursor-pointer ${
+                selectedBroadcastId === broadcast.id
                   ? "shadow-lg border-primary bg-primary/5"
                   : "hover:shadow-md hover:border-muted-foreground"
-                } ${filters.messageType === "favorites" ? "border-blue-200 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-950/30" : ""}`}
+              } ${filters.messageType === "favorites" ? "border-blue-200 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-950/30" : ""}`}
               onClick={() => handleBroadcastClick(broadcast.id)}
             >
               <CardContent className="p-4">
@@ -623,8 +630,9 @@ export default function BroadcastsPage() {
                     <div className="flex items-center space-x-2 mb-2">
                       <Badge
                         variant={getBadgeColor(broadcast.message_type) as any}
-                        className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-sm ${filters.messageType === broadcast.message_type ? "ring-2 ring-primary ring-offset-1" : ""
-                          }`}
+                        className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-sm ${
+                          filters.messageType === broadcast.message_type ? "ring-2 ring-primary ring-offset-1" : ""
+                        }`}
                         onClick={(e) => handleBadgeClick(e, broadcast.message_type)}
                         title={`點擊篩選「${getBadgeText(broadcast.message_type)}」類型的訊息`}
                       >
@@ -633,15 +641,20 @@ export default function BroadcastsPage() {
                       <span className="text-sm text-muted-foreground">{broadcast.channel}</span>
                       <div className="flex items-center">
                         <span
-                          className={`text-sm font-medium ${selectedBroadcastId === broadcast.id ? "text-primary" : "text-primary"
-                            }`}
+                          className={`text-sm font-medium ${
+                            selectedBroadcastId === broadcast.id ? "text-primary" : "text-primary"
+                          }`}
                         >
                           {broadcast.player_name}
                         </span>
                         {broadcast.player_id && (
                           <span className="text-xs text-muted-foreground">#{broadcast.player_id}</span>
                         )}
-                        <PlayerCopyButton playerName={broadcast.player_name} playerId={broadcast.player_id} analytics={analytics} />
+                        <PlayerCopyButton
+                          playerName={broadcast.player_name}
+                          playerId={broadcast.player_id}
+                          analytics={analytics}
+                        />
                       </div>
                       <div className="flex items-center text-sm text-muted-foreground">
                         <Clock className="w-3 h-3 mr-1" />
@@ -655,14 +668,19 @@ export default function BroadcastsPage() {
                       )}
                     </div>
                     <p
-                      className={`mb-2 ${selectedBroadcastId === broadcast.id ? "text-foreground font-medium" : "text-foreground"
-                        }`}
+                      className={`mb-2 ${
+                        selectedBroadcastId === broadcast.id ? "text-foreground font-medium" : "text-foreground"
+                      }`}
                     >
                       {broadcast.content}
                     </p>
                   </div>
                   <div className="flex-shrink-0">
-                    <FavoriteButton broadcast={broadcast} onFavoriteChange={handleFavoriteChange} analytics={analytics} />
+                    <FavoriteButton
+                      broadcast={broadcast}
+                      onFavoriteChange={handleFavoriteChange}
+                      analytics={analytics}
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -699,11 +717,11 @@ export default function BroadcastsPage() {
               <Button
                 onClick={() => {
                   goToPage(currentPage - 1)
-                  analytics.trackUserBehavior('pagination', {
-                    action: 'previous_page',
+                  analytics.trackUserBehavior("pagination", {
+                    action: "previous_page",
                     from_page: currentPage,
                     to_page: currentPage - 1,
-                    total_pages: Math.ceil(totalCount / 50)
+                    total_pages: Math.ceil(totalCount / 50),
                   })
                 }}
                 disabled={!hasPrev}
@@ -720,11 +738,11 @@ export default function BroadcastsPage() {
               <Button
                 onClick={() => {
                   goToPage(currentPage + 1)
-                  analytics.trackUserBehavior('pagination', {
-                    action: 'next_page',
+                  analytics.trackUserBehavior("pagination", {
+                    action: "next_page",
                     from_page: currentPage,
                     to_page: currentPage + 1,
-                    total_pages: Math.ceil(totalCount / 50)
+                    total_pages: Math.ceil(totalCount / 50),
                   })
                 }}
                 disabled={!hasNext}
