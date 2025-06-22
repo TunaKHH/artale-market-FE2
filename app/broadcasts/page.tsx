@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Clock, Search, AlertCircle, Copy, Check, ChevronLeft, ChevronRight, X, TestTube, Bookmark } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -251,6 +251,8 @@ export default function BroadcastsPage() {
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [favoriteMessages, setFavoriteMessages] = useState<any[]>([])
   const [pageStartTime, setPageStartTime] = useState<number>(0)
+  const [searchHistory, setSearchHistory] = useState<string[]>([])
+  const [showSearchHistory, setShowSearchHistory] = useState(false)
 
   // 分析追蹤
   const analytics = useAnalytics()
@@ -260,6 +262,7 @@ export default function BroadcastsPage() {
     setMounted(true)
     setShowTestMode(isTestEnvironment())
     updateFavoriteCount()
+    loadSearchHistory() // 添加這行
     setPageStartTime(Date.now())
 
     // 追蹤頁面瀏覽
@@ -291,6 +294,51 @@ export default function BroadcastsPage() {
     }
   }
 
+  // 更新搜尋歷史
+  const updateSearchHistory = (searchTerm: string) => {
+    if (!searchTerm.trim()) return
+
+    const trimmedTerm = searchTerm.trim()
+    const history = JSON.parse(localStorage.getItem("search-history") || "[]")
+
+    // 移除重複項目並添加到開頭
+    const newHistory = [trimmedTerm, ...history.filter((term: string) => term !== trimmedTerm)].slice(0, 10) // 最多保存 10 個搜尋記錄
+
+    localStorage.setItem("search-history", JSON.stringify(newHistory))
+    setSearchHistory(newHistory)
+  }
+
+  // 載入搜尋歷史
+  const loadSearchHistory = () => {
+    if (typeof window !== "undefined") {
+      const history = JSON.parse(localStorage.getItem("search-history") || "[]")
+      setSearchHistory(history)
+    }
+  }
+
+  // 清除搜尋歷史
+  const clearSearchHistory = () => {
+    localStorage.removeItem("search-history")
+    setSearchHistory([])
+    setShowSearchHistory(false)
+
+    analytics.trackAction("clear_search_history", "user_behavior", {
+      history_count: searchHistory.length,
+    })
+  }
+
+  // 使用歷史搜尋詞
+  const useHistorySearch = (term: string) => {
+    setSearchInput(term)
+    updateFilters({ keyword: term })
+    setShowSearchHistory(false)
+
+    analytics.trackAction("use_search_history", "user_behavior", {
+      search_term: term,
+      history_position: searchHistory.indexOf(term),
+    })
+  }
+
   // 使用自定義 Hook 取得廣播資料
   const {
     broadcasts,
@@ -311,6 +359,16 @@ export default function BroadcastsPage() {
     autoRefresh: true,
     refreshInterval: 3000,
   })
+
+  const clearSearch = useCallback(() => {
+    setSearchInput("")
+    updateFilters({ keyword: "" })
+    setShowSearchHistory(false) // 添加這行
+    analytics.trackAction("clear_search", "search", {
+      previous_keyword: filters.keyword,
+      result_count: broadcasts.length,
+    })
+  }, [analytics, filters.keyword, broadcasts.length, updateFilters, setShowSearchHistory])
 
   // 處理搜尋輸入 - 改為即時搜尋
   const handleInputChange = (value: string) => {
@@ -340,6 +398,7 @@ export default function BroadcastsPage() {
 
     // 追蹤手動搜尋行為
     if (searchTerm) {
+      updateSearchHistory(searchTerm) // 添加這行
       analytics.trackSearch(searchTerm, filters.messageType, broadcasts.length)
       analytics.trackAction("manual_search", "feature_usage", {
         search_length: searchTerm.length,
@@ -348,6 +407,7 @@ export default function BroadcastsPage() {
         search_type: "client_side",
       })
     }
+    setShowSearchHistory(false) // 添加這行
   }
 
   // 處理鍵盤事件
@@ -509,15 +569,54 @@ export default function BroadcastsPage() {
           {/* Filters */}
           {filters.messageType !== "favorites" && (
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <div className="flex items-center space-x-2">
+              <div className="relative flex items-center space-x-2">
                 <Search className="w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="即時搜尋玩家或訊息內容..."
-                  className="max-w-md"
-                  value={searchInput}
-                  onChange={(e) => handleInputChange(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                />
+                <div className="relative">
+                  <Input
+                    placeholder="即時搜尋玩家或訊息內容..."
+                    className="max-w-md pr-8"
+                    value={searchInput}
+                    onChange={(e) => handleInputChange(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => setShowSearchHistory(searchHistory.length > 0)}
+                    onBlur={() => setTimeout(() => setShowSearchHistory(false), 200)}
+                  />
+                  {searchHistory.length > 0 && (
+                    <button
+                      onClick={() => setShowSearchHistory(!showSearchHistory)}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      title="搜尋歷史"
+                    >
+                      <Clock className="w-4 h-4" />
+                    </button>
+                  )}
+
+                  {/* 搜尋歷史下拉選單 */}
+                  {showSearchHistory && searchHistory.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                      <div className="p-2 border-b border-border flex items-center justify-between">
+                        <span className="text-sm font-medium text-muted-foreground">搜尋歷史</span>
+                        <button
+                          onClick={clearSearchHistory}
+                          className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                          title="清除歷史"
+                        >
+                          清除
+                        </button>
+                      </div>
+                      {searchHistory.map((term, index) => (
+                        <button
+                          key={index}
+                          onClick={() => useHistorySearch(term)}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center justify-between group"
+                        >
+                          <span className="truncate">{term}</span>
+                          <Search className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <Button onClick={handleSearch} variant="outline" size="sm" className="flex items-center space-x-1">
                   <Search className="w-4 h-4" />
                   <span>搜尋</span>
@@ -534,17 +633,7 @@ export default function BroadcastsPage() {
               搜尋「<span className="font-semibold">{filters.keyword}</span>」找到 {broadcasts.length} 條結果
               {filters.messageType !== "all" && <span> (僅顯示「{getBadgeText(filters.messageType)}」類型)</span>}
             </p>
-            <button
-              onClick={() => {
-                setSearchInput("")
-                updateFilters({ keyword: "" })
-                analytics.trackAction("clear_search", "search", {
-                  previous_keyword: filters.keyword,
-                  result_count: broadcasts.length,
-                })
-              }}
-              className="mt-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
-            >
+            <button onClick={clearSearch} className="mt-1 text-xs text-blue-600 dark:text-blue-400 hover:underline">
               清除搜尋
             </button>
           </div>
