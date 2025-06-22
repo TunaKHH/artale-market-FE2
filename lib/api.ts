@@ -13,7 +13,7 @@ import { emitConnectionChange } from "../hooks/useConnectionStatus"
 const API_ENDPOINTS = [
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
   "https://maple-market-api.zeabur.app",
-  "https://maple-market-api-beta.zeabur.app"
+  "https://maple-market-api-beta.zeabur.app",
 ].filter(Boolean) // 移除空值
 
 const API_BASE_URL = API_ENDPOINTS[0] // 預設主要端點
@@ -26,18 +26,18 @@ interface EndpointStatus {
   consecutiveFailures: number
 }
 
-let endpointStatuses: EndpointStatus[] = API_ENDPOINTS.map(url => ({
+const endpointStatuses: EndpointStatus[] = API_ENDPOINTS.map((url) => ({
   url,
   isHealthy: true,
   lastChecked: 0,
-  consecutiveFailures: 0
+  consecutiveFailures: 0,
 }))
 
 // 取得健康的端點
 const getHealthyEndpoint = (): string => {
   const now = Date.now()
-  const healthyEndpoints = endpointStatuses.filter(status =>
-    status.isHealthy || (now - status.lastChecked > 60000) // 1分鐘後重試
+  const healthyEndpoints = endpointStatuses.filter(
+    (status) => status.isHealthy || now - status.lastChecked > 60000, // 1分鐘後重試
   )
 
   if (healthyEndpoints.length === 0) {
@@ -52,7 +52,7 @@ const getHealthyEndpoint = (): string => {
 
 // 標記端點為失敗
 const markEndpointFailed = (url: string) => {
-  const status = endpointStatuses.find(s => s.url === url)
+  const status = endpointStatuses.find((s) => s.url === url)
   if (status) {
     status.consecutiveFailures++
     status.lastChecked = Date.now()
@@ -65,7 +65,7 @@ const markEndpointFailed = (url: string) => {
 
 // 標記端點為成功
 const markEndpointSuccess = (url: string) => {
-  const status = endpointStatuses.find(s => s.url === url)
+  const status = endpointStatuses.find((s) => s.url === url)
   if (status) {
     status.isHealthy = true
     status.consecutiveFailures = 0
@@ -74,10 +74,7 @@ const markEndpointSuccess = (url: string) => {
 }
 
 // 智能重試 fetch 函數
-const fetchWithFailover = async (
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<Response> => {
+const fetchWithFailover = async (endpoint: string, options: RequestInit = {}): Promise<Response> => {
   let lastError: Error | null = null
   let totalFailoverCount = 0
 
@@ -102,7 +99,6 @@ const fetchWithFailover = async (
       emitConnectionChange(true, `server_${attempt + 1}`, totalFailoverCount)
 
       return response
-
     } catch (error) {
       console.warn(`❌ [故障轉移] 伺服器 ${attempt + 1} 連線失敗`)
       markEndpointFailed(baseUrl)
@@ -115,7 +111,7 @@ const fetchWithFailover = async (
       // 如果不是最後一次嘗試，等待一下再重試
       if (attempt < maxAttempts - 1) {
         console.log(`⏳ 等待 ${attempt + 1} 秒後重試...`)
-        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))) // 指數退避
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1))) // 指數退避
       }
     }
   }
@@ -130,7 +126,7 @@ const trackApiCall = (endpoint: string, success: boolean, searchTerm?: string, r
       // 追蹤失敗的 API 調用
       ;(window as any).gtag("event", "api_error", {
         api_endpoint: endpoint,
-        search_term: searchTerm || "unknown"
+        search_term: searchTerm || "unknown",
       })
     } else if (searchTerm) {
       // 追蹤搜尋行為和結果
@@ -138,14 +134,14 @@ const trackApiCall = (endpoint: string, success: boolean, searchTerm?: string, r
         search_term: searchTerm,
         result_count: resultCount || 0,
         has_results: (resultCount || 0) > 0,
-        endpoint: endpoint
+        endpoint: endpoint,
       })
 
       // 特別追蹤無結果搜尋
       if ((resultCount || 0) === 0) {
         ;(window as any).gtag("event", "search_no_results", {
           search_term: searchTerm,
-          endpoint: endpoint
+          endpoint: endpoint,
         })
       }
     }
@@ -534,65 +530,5 @@ export async function getPlayerBroadcasts(playerName: string, hours = 24): Promi
   }
 }
 
-// 搜尋廣播訊息（使用一般端點的 keyword 參數）
-export async function searchBroadcasts({
-  query,
-  messageType,
-  page = 1,
-  pageSize = 50,
-}: {
-  query: string
-  messageType?: string
-  page?: number
-  pageSize?: number
-}): Promise<BroadcastsResponse> {
-  console.log("🔍 [API] 開始搜尋廣播:", { query, messageType, page, pageSize })
-
-  // 檢查是否應該直接使用假資料
-  if (shouldDirectlyUseMockData()) {
-    console.log("🧪 [測試模式] 直接使用假資料搜尋")
-    return getMockBroadcastsResponse({
-      page,
-      pageSize: Math.min(Math.max(pageSize, 1), 50),
-      messageType,
-      keyword: query,
-    })
-  }
-
-  // 強制限制每頁最多 50 筆，防止過載
-  const limitedPageSize = Math.min(Math.max(pageSize, 1), 50)
-
-  const params = new URLSearchParams({
-    keyword: query, // 改用 keyword 參數
-    page: page.toString(),
-    page_size: limitedPageSize.toString(),
-  })
-
-  if (messageType && messageType !== "all") {
-    params.append("message_type", messageType)
-  }
-
-  try {
-    // 使用一般端點而非專門的搜尋端點
-    const response = await fetchWithFailover(`/broadcasts/?${params}`)
-    const result = await handleApiResponse(response)
-    console.log("✅ [搜尋] 請求成功:", result)
-    return result
-  } catch (error) {
-    console.error("❌ [搜尋] 請求失敗:", error)
-
-    // 在測試環境下使用假資料
-    if (isTestEnvironment()) {
-      console.log("🧪 [測試模式] 搜尋 API 失敗，使用假資料")
-
-      return getMockBroadcastsResponse({
-        page,
-        pageSize: limitedPageSize,
-        messageType,
-        keyword: query,
-      })
-    }
-
-    throw error
-  }
-}
+// 移除整個 searchBroadcasts 函數，因為改用客戶端搜尋
+// export async function searchBroadcasts({ ... }) { ... }

@@ -329,23 +329,40 @@ export default function BroadcastsPage() {
     refreshInterval: 30000,
   })
 
-  // 處理搜尋輸入
+  // 處理搜尋輸入 - 改為即時搜尋
   const handleInputChange = (value: string) => {
     setSearchInput(value)
+    // 即時更新篩選條件
+    updateFilters({ keyword: value })
+
+    // 追蹤搜尋行為（防抖動）
+    if (value.trim()) {
+      const timer = setTimeout(() => {
+        analytics.trackSearch(value, filters.messageType, broadcasts.length)
+        analytics.trackFeatureUsage("search", {
+          search_length: value.length,
+          has_filters: filters.messageType !== "all",
+          current_message_type: filters.messageType,
+          search_type: "client_side",
+        })
+      }, 500)
+
+      return () => clearTimeout(timer)
+    }
   }
 
-  // 執行搜尋
+  // 執行搜尋 - 現在主要用於追蹤
   const handleSearch = () => {
     const searchTerm = searchInput.trim()
-    updateFilters({ keyword: searchTerm })
 
-    // 追蹤搜尋行為
+    // 追蹤手動搜尋行為
     if (searchTerm) {
       analytics.trackSearch(searchTerm, filters.messageType, broadcasts.length)
-      analytics.trackFeatureUsage("search", {
+      analytics.trackFeatureUsage("manual_search", {
         search_length: searchTerm.length,
         has_filters: filters.messageType !== "all",
         current_message_type: filters.messageType,
+        search_type: "client_side",
       })
     }
   }
@@ -570,7 +587,7 @@ export default function BroadcastsPage() {
               <div className="flex items-center space-x-2">
                 <Search className="w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="搜尋玩家或訊息... (按 Enter 搜尋)"
+                  placeholder="即時搜尋玩家或訊息內容..."
                   className="max-w-md"
                   value={searchInput}
                   onChange={(e) => handleInputChange(e.target.value)}
@@ -584,6 +601,29 @@ export default function BroadcastsPage() {
             </div>
           )}
         </div>
+
+        {/* 搜尋結果提示 */}
+        {filters.keyword.trim() && (
+          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              搜尋「<span className="font-semibold">{filters.keyword}</span>」找到 {broadcasts.length} 條結果
+              {filters.messageType !== "all" && <span> (僅顯示「{getBadgeText(filters.messageType)}」類型)</span>}
+            </p>
+            <button
+              onClick={() => {
+                setSearchInput("")
+                updateFilters({ keyword: "" })
+                analytics.trackAction("clear_search", "search", {
+                  previous_keyword: filters.keyword,
+                  result_count: broadcasts.length,
+                })
+              }}
+              className="mt-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              清除搜尋
+            </button>
+          </div>
+        )}
 
         {/* Type Tabs */}
         <Tabs

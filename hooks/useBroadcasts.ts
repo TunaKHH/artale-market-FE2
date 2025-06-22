@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
-import { getBroadcasts, searchBroadcasts, type BroadcastMessage, type BroadcastsResponse } from '@/lib/api'
+"use client"
+
+import { useState, useEffect, useCallback } from "react"
+import { getBroadcasts, type BroadcastMessage, type BroadcastsResponse } from "@/lib/api"
 
 interface UseBroadcastsOptions {
   autoRefresh?: boolean
@@ -10,7 +12,7 @@ interface UseBroadcastsOptions {
 export function useBroadcasts({
   autoRefresh = true,
   refreshInterval = 30000, // 30秒
-  initialPageSize = 50
+  initialPageSize = 50,
 }: UseBroadcastsOptions = {}) {
   const [broadcasts, setBroadcasts] = useState<BroadcastMessage[]>([])
   const [loading, setLoading] = useState(true)
@@ -26,68 +28,65 @@ export function useBroadcasts({
   const [countdown, setCountdown] = useState(0)
   const [savedCountdown, setSavedCountdown] = useState(0)
 
+  const [allBroadcasts, setAllBroadcasts] = useState<BroadcastMessage[]>([]) // 儲存所有廣播資料
+  const [filteredBroadcasts, setFilteredBroadcasts] = useState<BroadcastMessage[]>([]) // 搜尋後的結果
 
   // 篩選狀態
   const [filters, setFilters] = useState({
-    messageType: 'all',
-    keyword: '',
-    playerName: '',
-    server: 'all'
+    messageType: "all",
+    keyword: "",
+    playerName: "",
+    server: "all",
   })
 
-
   // 載入廣播訊息
-  const loadBroadcasts = useCallback(async (page = 1, isRefresh = false) => {
+  const loadBroadcasts = useCallback(
+    async (page = 1, isRefresh = false) => {
+      try {
+        if (!isRefresh) {
+          setLoading(true)
+        }
+        setError(null)
+        setRateLimitError(null)
 
-    try {
-      if (!isRefresh) {
-        setLoading(true)
-      }
-      setError(null)
-      setRateLimitError(null)
+        let response: BroadcastsResponse
 
-      let response: BroadcastsResponse
-
-      if (filters.keyword.trim()) {
-        // 使用搜尋 API，強制限制每頁最多 50 筆
-        response = await searchBroadcasts({
-          query: filters.keyword,
-          messageType: filters.messageType,
-          page,
-          pageSize: Math.min(initialPageSize, 50) // 確保搜尋結果每頁最多 50 筆
-        })
-      } else {
-        // 使用一般列表 API，同樣限制每頁最多 50 筆
+        // 移除搜尋邏輯，只使用一般列表 API
         response = await getBroadcasts({
           page,
-          pageSize: Math.min(initialPageSize, 50), // 確保一般瀏覽每頁最多 50 筆
-          messageType: filters.messageType,
-          playerName: filters.playerName || undefined
+          pageSize: Math.min(initialPageSize, 50),
+          messageType: filters.messageType === "all" ? undefined : filters.messageType,
+          playerName: filters.playerName || undefined,
         })
-      }
 
-      setBroadcasts(response.messages)
-      setTotalCount(response.total)
-      setHasNext(response.has_next)
-      setHasPrev(response.has_prev)
-      setCurrentPage(response.page)
-    } catch (err) {
-      console.error('載入廣播訊息失敗:', err)
+        // 如果是第一頁，儲存所有資料用於搜尋
+        if (page === 1) {
+          setAllBroadcasts(response.messages)
+        }
 
-      // 檢查是否為 429 錯誤 (Rate Limit)
-      if (err instanceof Error && err.message.includes('429')) {
-        setRateLimitError('請求過於頻繁，請稍後再試。後端伺服器正在保護 API 不被過度使用。')
-      } else {
-        setError(err instanceof Error ? err.message : '載入廣播訊息失敗')
+        setBroadcasts(response.messages)
+        setTotalCount(response.total)
+        setHasNext(response.has_next)
+        setHasPrev(response.has_prev)
+        setCurrentPage(response.page)
+      } catch (err) {
+        console.error("載入廣播訊息失敗:", err)
+
+        if (err instanceof Error && err.message.includes("429")) {
+          setRateLimitError("請求過於頻繁，請稍後再試。後端伺服器正在保護 API 不被過度使用。")
+        } else {
+          setError(err instanceof Error ? err.message : "載入廣播訊息失敗")
+        }
+      } finally {
+        setLoading(false)
       }
-    } finally {
-      setLoading(false)
-    }
-  }, [filters, initialPageSize, mounted])
+    },
+    [filters.messageType, filters.playerName, initialPageSize, mounted],
+  )
 
   // 更新篩選條件
   const updateFilters = useCallback((newFilters: Partial<typeof filters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }))
+    setFilters((prev) => ({ ...prev, ...newFilters }))
     setCurrentPage(1) // 重置頁數
   }, [])
 
@@ -107,33 +106,72 @@ export function useBroadcasts({
 
   // 切換暫停/恢復刷新
   const togglePause = useCallback(() => {
-    setIsPaused(prev => !prev)
+    setIsPaused((prev) => !prev)
   }, [])
 
   // 設置 hover 狀態
-  const setHoverState = useCallback((hovering: boolean) => {
-    if (hovering) {
-      // 進入 hover 時保存當前倒數
-      setSavedCountdown(countdown)
-    } else {
-      // 離開 hover 時恢復倒數
-      if (savedCountdown > 0) {
-        setCountdown(savedCountdown)
+  const setHoverState = useCallback(
+    (hovering: boolean) => {
+      if (hovering) {
+        // 進入 hover 時保存當前倒數
+        setSavedCountdown(countdown)
+      } else {
+        // 離開 hover 時恢復倒數
+        if (savedCountdown > 0) {
+          setCountdown(savedCountdown)
+        }
       }
-    }
-    setIsHovering(hovering)
-  }, [countdown, savedCountdown])
+      setIsHovering(hovering)
+    },
+    [countdown, savedCountdown],
+  )
 
   // 換頁
-  const goToPage = useCallback((page: number) => {
-    loadBroadcasts(page)
-  }, [loadBroadcasts])
+  const goToPage = useCallback(
+    (page: number) => {
+      loadBroadcasts(page)
+    },
+    [loadBroadcasts],
+  )
 
   // 客戶端掛載
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  // 客戶端搜尋函數
+  const performClientSearch = useCallback(
+    (searchTerm: string, messageType: string) => {
+      if (!searchTerm.trim()) {
+        setFilteredBroadcasts([])
+        return
+      }
+
+      const keyword = searchTerm.toLowerCase()
+      const filtered = allBroadcasts.filter((broadcast) => {
+        // 訊息類型篩選
+        if (messageType !== "all" && broadcast.message_type !== messageType) {
+          return false
+        }
+
+        // 關鍵字搜尋（搜尋內容和玩家名稱）
+        const searchText = `${broadcast.content} ${broadcast.player_name}`.toLowerCase()
+        return searchText.includes(keyword)
+      })
+
+      setFilteredBroadcasts(filtered)
+    },
+    [allBroadcasts],
+  )
+
+  // 當搜尋關鍵字或訊息類型改變時執行搜尋
+  useEffect(() => {
+    if (filters.keyword.trim()) {
+      performClientSearch(filters.keyword, filters.messageType)
+    } else {
+      setFilteredBroadcasts([])
+    }
+  }, [filters.keyword, filters.messageType, performClientSearch])
 
   // 初始載入和篩選變更時重新載入
   useEffect(() => {
@@ -162,7 +200,7 @@ export function useBroadcasts({
     }
 
     const countdownInterval = setInterval(() => {
-      setCountdown(prev => {
+      setCountdown((prev) => {
         if (prev <= 1) {
           refresh()
           return Math.floor(refreshInterval / 1000)
@@ -176,39 +214,41 @@ export function useBroadcasts({
 
   // 取得統計資料 - 智能統計邏輯
   const getTypeCounts = useCallback(() => {
+    const currentData = filters.keyword.trim() ? filteredBroadcasts : broadcasts
+
     // 如果有選擇特定類型篩選，只顯示當前篩選結果的統計
-    if (filters.messageType !== 'all') {
+    if (filters.messageType !== "all") {
       return {
-        all: totalCount, // 顯示篩選後的總數
-        sell: filters.messageType === 'sell' ? totalCount : 0,
-        buy: filters.messageType === 'buy' ? totalCount : 0,
-        team: filters.messageType === 'team' ? totalCount : 0,
-        other: filters.messageType === 'other' ? totalCount : 0,
+        all: currentData.length,
+        sell: filters.messageType === "sell" ? currentData.length : 0,
+        buy: filters.messageType === "buy" ? currentData.length : 0,
+        team: filters.messageType === "team" ? currentData.length : 0,
+        other: filters.messageType === "other" ? currentData.length : 0,
       }
     }
 
     // 沒有類型篩選時，顯示當前載入資料的統計
     return {
-      all: broadcasts.length,
-      sell: broadcasts.filter(b => b.message_type === 'sell').length,
-      buy: broadcasts.filter(b => b.message_type === 'buy').length,
-      team: broadcasts.filter(b => b.message_type === 'team').length,
-      other: broadcasts.filter(b => b.message_type === 'other').length,
+      all: currentData.length,
+      sell: currentData.filter((b) => b.message_type === "sell").length,
+      buy: currentData.filter((b) => b.message_type === "buy").length,
+      team: currentData.filter((b) => b.message_type === "team").length,
+      other: currentData.filter((b) => b.message_type === "other").length,
     }
-  }, [broadcasts, filters.messageType, totalCount])
+  }, [broadcasts, filteredBroadcasts, filters.messageType, filters.keyword])
 
   return {
-    // 資料
-    broadcasts: mounted ? broadcasts : [],
-    totalCount: mounted ? totalCount : 0,
+    // 資料 - 如果有搜尋關鍵字就顯示搜尋結果，否則顯示原始資料
+    broadcasts: mounted ? (filters.keyword.trim() ? filteredBroadcasts : broadcasts) : [],
+    totalCount: mounted ? (filters.keyword.trim() ? filteredBroadcasts.length : totalCount) : 0,
     typeCounts: mounted ? getTypeCounts() : { all: 0, sell: 0, buy: 0, team: 0, other: 0 },
 
-    // 狀態
+    // 其他狀態保持不變...
     loading: mounted ? loading : true,
     error: mounted ? error : null,
     rateLimitError: mounted ? rateLimitError : null,
-    hasNext: mounted ? hasNext : false,
-    hasPrev: mounted ? hasPrev : false,
+    hasNext: mounted ? (filters.keyword.trim() ? false : hasNext) : false, // 搜尋模式下不分頁
+    hasPrev: mounted ? (filters.keyword.trim() ? false : hasPrev) : false, // 搜尋模式下不分頁
     currentPage: mounted ? currentPage : 1,
     isPaused: mounted ? isPaused : false,
     isHovering: mounted ? isHovering : false,
@@ -224,6 +264,6 @@ export function useBroadcasts({
     loadBroadcasts,
     clearRateLimitError,
     togglePause,
-    setHoverState
+    setHoverState,
   }
 }
