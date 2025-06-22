@@ -53,6 +53,36 @@ export function useBroadcasts({
     server: "all",
   })
 
+  // 添加去重函數
+  const deduplicateMessages = useCallback((messages: ExtendedBroadcastMessage[]): ExtendedBroadcastMessage[] => {
+    const messageMap = new Map<string, ExtendedBroadcastMessage>()
+
+    // 按時間排序，確保最新的訊息會覆蓋舊的
+    const sortedMessages = [...messages].sort((a, b) =>
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    )
+
+    sortedMessages.forEach(message => {
+      // 使用玩家名稱 + 訊息內容作為唯一鍵
+      const key = `${message.player_name}::${message.content.trim()}`
+
+      // 如果已存在相同的鍵，比較時間戳，保留較新的
+      if (messageMap.has(key)) {
+        const existing = messageMap.get(key)!
+        if (new Date(message.timestamp).getTime() > new Date(existing.timestamp).getTime()) {
+          messageMap.set(key, message)
+        }
+      } else {
+        messageMap.set(key, message)
+      }
+    })
+
+    // 轉回陣列並按時間降序排列
+    return Array.from(messageMap.values()).sort((a, b) =>
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    )
+  }, [])
+
   // 標記新訊息的函數
   const markNewMessages = useCallback(
     (newMessages: BroadcastMessage[], isInitialLoad = false): ExtendedBroadcastMessage[] => {
@@ -101,7 +131,7 @@ export function useBroadcasts({
 
         // 判斷是否為首次載入
         const isInitialLoad = previousBroadcastIds.size === 0
-        
+
         // 首次載入時不傳送 messageType 篩選，獲取所有資料
         response = await getBroadcasts({
           page,
@@ -115,8 +145,11 @@ export function useBroadcasts({
         // 標記新訊息
         const messagesWithNewFlags = markNewMessages(response.messages, isInitialLoad)
 
+        // 對訊息進行去重處理
+        const deduplicatedMessages = deduplicateMessages(messagesWithNewFlags)
+
         // 更新之前的訊息 ID 集合
-        const newIds = new Set(response.messages.map((msg) => msg.id))
+        const newIds = new Set(deduplicatedMessages.map((msg) => msg.id))
         setPreviousBroadcastIds(newIds)
 
         // 如果是第一頁，儲存所有資料用於搜尋
@@ -125,35 +158,38 @@ export function useBroadcasts({
           setAllBroadcasts(prevAll => {
             // 如果是首次載入，直接使用新資料
             if (isInitialLoad) {
-              console.log(`🔄 [首次載入] 載入 ${messagesWithNewFlags.length} 筆資料用於搜尋`)
-              return messagesWithNewFlags
+              console.log(`🔄 [首次載入] 載入 ${deduplicatedMessages.length} 筆資料用於搜尋`)
+              return deduplicatedMessages
             }
-            
+
             // 非首次載入時，合併新舊資料並去重
             const existingIds = new Set(prevAll.map(msg => msg.id))
-            const newMessages = messagesWithNewFlags.filter(msg => !existingIds.has(msg.id))
+            const newMessages = deduplicatedMessages.filter(msg => !existingIds.has(msg.id))
             const combined = [...newMessages, ...prevAll]
-            
-            console.log(`🔄 [資料更新] 新增 ${newMessages.length} 筆，總共 ${combined.length} 筆可搜尋`)
-            
+
+            // 對合併後的資料進行去重
+            const finalDeduplicatedData = deduplicateMessages(combined)
+
+            console.log(`🔄 [資料更新] 新增 ${newMessages.length} 筆，去重後總共 ${finalDeduplicatedData.length} 筆可搜尋`)
+
             // 按時間排序並限制總數量，避免記憶體過度使用
-            const sorted = combined
+            const sorted = finalDeduplicatedData
               .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
               .slice(0, 10000) // 保留最新的 10000 筆用於搜尋
-              
+
             return sorted
           })
         }
 
-        setBroadcasts(messagesWithNewFlags)
+        setBroadcasts(deduplicatedMessages)
         setHasNext(response.has_next)
         setHasPrev(response.has_prev)
         setCurrentPage(response.page)
 
         // 如果有新訊息，在控制台顯示通知
-        const newMessagesCount = messagesWithNewFlags.filter((msg) => msg.isNew).length
+        const newMessagesCount = deduplicatedMessages.filter((msg) => msg.isNew).length
         if (newMessagesCount > 0 && !isInitialLoad) {
-          console.log(`🆕 收到 ${newMessagesCount} 條新廣播訊息`)
+          console.log(`🆕 收到 ${newMessagesCount} 條新廣播訊息 (已去重)`)
         }
       } catch (err) {
         console.error("載入廣播訊息失敗:", err)
@@ -246,17 +282,20 @@ export function useBroadcasts({
         return searchText.includes(keyword)
       })
 
-      setFilteredBroadcasts(filtered)
-      
+      // 對搜尋結果進行去重處理
+      const deduplicatedFiltered = deduplicateMessages(filtered)
+      setFilteredBroadcasts(deduplicatedFiltered)
+
       // 分析搜尋資料的時間範圍
       if (allBroadcasts.length > 0) {
         const timestamps = allBroadcasts.map(b => new Date(b.timestamp).getTime())
         const oldestTime = Math.min(...timestamps)
         const newestTime = Math.max(...timestamps)
         const timeRangeHours = Math.round((newestTime - oldestTime) / (1000 * 60 * 60 * 24 * 10)) / 100 // 天數，保留兩位小數
-        
+
         console.log(`🔍 搜尋 "${searchTerm}":`, {
-          找到結果: filtered.length,
+          找到結果: deduplicatedFiltered.length,
+          原始結果: filtered.length,
           搜尋範圍: `${allBroadcasts.length} 筆資料`,
           時間跨度: `${timeRangeHours} 天`,
           最舊資料: new Date(oldestTime).toLocaleString(),
@@ -266,7 +305,7 @@ export function useBroadcasts({
         console.log(`🔍 搜尋 "${searchTerm}" 無可搜尋資料`)
       }
     },
-    [allBroadcasts],
+    [allBroadcasts, deduplicateMessages],
   )
 
   // 當搜尋關鍵字或訊息類型改變時執行搜尋
@@ -328,12 +367,12 @@ export function useBroadcasts({
 
     return () => clearInterval(countdownInterval)
   }, [
-    autoRefresh, 
-    refreshInterval, 
-    refresh, 
-    mounted, 
-    isPaused, 
-    isHovering, 
+    autoRefresh,
+    refreshInterval,
+    refresh,
+    mounted,
+    isPaused,
+    isHovering,
     countdown,
     activityState.shouldPauseRequests,
     activityState.getRecommendedInterval,
@@ -380,19 +419,19 @@ export function useBroadcasts({
   // 根據 messageType 篩選資料
   const getFilteredBroadcasts = useCallback(() => {
     if (!mounted) return []
-    
+
     let data = filters.keyword.trim() ? filteredBroadcasts : broadcasts
-    
+
     // 根據分類篩選
     if (filters.messageType !== "all") {
       data = data.filter(broadcast => broadcast.message_type === filters.messageType)
     }
-    
+
     // 無搜尋時限制顯示 30 筆，有搜尋時顯示全部篩選結果
     if (!filters.keyword.trim()) {
       data = data.slice(0, 30)
     }
-    
+
     return data
   }, [mounted, filters.keyword, filteredBroadcasts, broadcasts, filters.messageType])
 
@@ -401,7 +440,7 @@ export function useBroadcasts({
   // 計算實際總資料量
   const getActualTotalCount = useCallback(() => {
     if (!mounted) return 0
-    
+
     // 如果有搜尋，返回搜尋結果的總量
     if (filters.keyword.trim()) {
       let searchData = filteredBroadcasts
@@ -411,12 +450,12 @@ export function useBroadcasts({
       }
       return searchData.length
     }
-    
+
     // 無搜尋時，返回當前分類的全部資料量
     if (filters.messageType !== "all") {
       return broadcasts.filter(broadcast => broadcast.message_type === filters.messageType).length
     }
-    
+
     // 無搜尋且無分類篩選時，返回全部資料量
     return broadcasts.length
   }, [mounted, filters.keyword, filters.messageType, filteredBroadcasts, broadcasts])
