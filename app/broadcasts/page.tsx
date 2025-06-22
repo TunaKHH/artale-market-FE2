@@ -670,7 +670,7 @@ export default function BroadcastsPage() {
         </div>
 
         {/* Empty state */}
-        {!loading && displayMessages.length === 0 && (
+        {!isInitialLoading && displayMessages.length === 0 && (
           <div className="text-center py-12">
             {filters.messageType === "favorites" ? (
               <div className="space-y-2">
@@ -692,7 +692,7 @@ export default function BroadcastsPage() {
         )}
 
         {/* Pagination - 只在非收藏模式下顯示 */}
-        {!loading && filters.messageType !== "favorites" && (hasNext || hasPrev || totalCount > 0) && (
+        {!isInitialLoading && filters.messageType !== "favorites" && (hasNext || hasPrev || totalCount > 0) && (
           <div className="flex items-center justify-between mt-8">
             <div className="flex items-center space-x-2">
               <Button

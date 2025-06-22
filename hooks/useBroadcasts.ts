@@ -318,7 +318,7 @@ export function useBroadcasts({
     rateLimitError: mounted ? rateLimitError : null,
     hasNext: mounted ? (filters.keyword.trim() ? false : hasNext) : false, // 搜尋模式下不分頁
     hasPrev: mounted ? (filters.keyword.trim() ? false : hasPrev) : false, // 搜尋模式下不分頁
-    currentPage: mounted ? currentPage : 1,
+    currentPage: mounted ? (filters.keyword.trim() ? 1 : currentPage) : 1, // 搜尋模式下頁碼重置為 1
     isPaused: mounted ? isPaused : false,
     isHovering: mounted ? isHovering : false,
     countdown: mounted ? countdown : 0,
