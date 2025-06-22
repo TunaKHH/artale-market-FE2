@@ -297,6 +297,7 @@ export default function BroadcastsPage() {
     totalCount,
     typeCounts,
     loading,
+    isInitialLoading,
     error,
     rateLimitError,
     filters,
@@ -572,7 +573,7 @@ export default function BroadcastsPage() {
 
         {/* Broadcasts List */}
         <div className="space-y-4">
-          {loading &&
+          {isInitialLoading &&
             filters.messageType !== "favorites" &&
             // 顯示載入中骨架
             Array.from({ length: 5 }).map((_, index) => <BroadcastSkeleton key={index} />)}

@@ -22,6 +22,7 @@ export function useBroadcasts({
 }: UseBroadcastsOptions = {}) {
   const [broadcasts, setBroadcasts] = useState<ExtendedBroadcastMessage[]>([])
   const [loading, setLoading] = useState(true)
+  const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rateLimitError, setRateLimitError] = useState<string | null>(null)
   const [totalCount, setTotalCount] = useState(0)
@@ -134,6 +135,7 @@ export function useBroadcasts({
         }
       } finally {
         setLoading(false)
+        setIsInitialLoading(false)
       }
     },
     [filters.messageType, filters.playerName, initialPageSize, mounted, markNewMessages, previousBroadcastIds.size],
@@ -311,6 +313,7 @@ export function useBroadcasts({
 
     // 其他狀態保持不變...
     loading: mounted ? loading : true,
+    isInitialLoading: mounted ? isInitialLoading : true,
     error: mounted ? error : null,
     rateLimitError: mounted ? rateLimitError : null,
     hasNext: mounted ? (filters.keyword.trim() ? false : hasNext) : false, // 搜尋模式下不分頁
