@@ -363,8 +363,7 @@ export default function BroadcastsPage() {
     setSelectedBroadcastId((prev) => (prev === broadcastId ? null : broadcastId))
 
     // 追蹤卡片互動
-    analytics.trackUserBehavior("broadcast_card_click", {
-      action: isExpanding ? "expand" : "collapse",
+    analytics.trackAction(isExpanding ? "expand" : "collapse", "broadcast_card_click", {
       broadcast_id: broadcastId,
       current_filter: filters.messageType,
     })
