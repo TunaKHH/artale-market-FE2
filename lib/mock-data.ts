@@ -289,11 +289,11 @@ export const isProductionEnvironment = (): boolean => {
   // 在瀏覽器環境中檢測正式站域名
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname
-    const isProduction = 
+    const isProduction =
       hostname === "artale-market-fe.vercel.app" ||
       hostname === "artale-love.com" ||
       hostname === "www.artale-love.com" // 正式站域名
-    
+
     console.log("🔍 環境檢測:", { hostname, isProduction, env: process.env.NEXT_PUBLIC_IS_PRODUCTION })
     return isProduction
   }

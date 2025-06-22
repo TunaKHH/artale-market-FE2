@@ -1,0 +1,44 @@
+name: 程式碼品質檢查
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout 程式碼
+      uses: actions/checkout@v4
+
+    - name: 設定 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'pnpm'
+
+    - name: 安裝 pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 9.0.0
+
+    - name: 安裝依賴
+      run: pnpm install --frozen-lockfile
+
+    - name: TypeScript 型別檢查
+      run: pnpm tsc --noEmit
+
+    - name: ESLint 檢查
+      run: pnpm lint
+
+    - name: 建置檢查
+      run: pnpm build
+
+    - name: 品質報告
+      if: failure()
+      run: |
+        echo "## 🚨 品質檢查失敗" >> $GITHUB_STEP_SUMMARY
+        echo "請修正以上錯誤後重新提交。" >> $GITHUB_STEP_SUMMARY
