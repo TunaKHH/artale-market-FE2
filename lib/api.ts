@@ -12,6 +12,7 @@ import { emitConnectionChange } from "../hooks/useConnectionStatus"
 // 多端點配置 - 支援故障轉移
 const API_ENDPOINTS = [
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
+  "https://api.artale-love.com",
   "https://maple-market-api.zeabur.app",
   "https://maple-market-api-beta.zeabur.app",
 ].filter(Boolean) // 移除空值

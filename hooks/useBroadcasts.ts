@@ -34,6 +34,8 @@ export function useBroadcasts({
   const [isHovering, setIsHovering] = useState(false)
   const [countdown, setCountdown] = useState(0)
   const [savedCountdown, setSavedCountdown] = useState(0)
+  const [hasInitialLoaded, setHasInitialLoaded] = useState(false) // 追蹤是否已完成首次載入
+  const [isRequestInProgress, setIsRequestInProgress] = useState(false) // 追蹤是否有請求正在進行中
 
   // 活動檢測
   const activityState = useActivityDetection({
@@ -120,7 +122,15 @@ export function useBroadcasts({
   // 載入廣播訊息
   const loadBroadcasts = useCallback(
     async (page = 1, isRefresh = false) => {
+      // 如果有請求正在進行中，跳過這次請求
+      if (isRequestInProgress) {
+        console.log(`⏭️ 跳過請求 - 已有請求正在進行中`)
+        return
+      }
+
       try {
+        setIsRequestInProgress(true) // 標記請求開始
+
         if (!isRefresh) {
           setLoading(true)
         }
@@ -129,13 +139,13 @@ export function useBroadcasts({
 
         let response: BroadcastsResponse
 
-        // 判斷是否為首次載入
-        const isInitialLoad = previousBroadcastIds.size === 0
+        // 判斷是否為首次載入 - 只有在尚未完成首次載入且沒有之前的訊息 ID 時才算首次載入
+        const isInitialLoad = !hasInitialLoaded && previousBroadcastIds.size === 0
 
         // 首次載入時不傳送 messageType 篩選，獲取所有資料
         response = await getBroadcasts({
           page,
-          pageSize: isInitialLoad ? 5000 : Math.min(initialPageSize, 200), // 首次載入時不限制，後續為 100 筆
+          pageSize: isInitialLoad ? 5000 : Math.min(initialPageSize, 200), // 首次載入 5000 筆，後續為 100 筆
           messageType: isInitialLoad ? undefined : (filters.messageType === "all" ? undefined : filters.messageType),
           playerName: filters.playerName || undefined,
           initialLoad: isInitialLoad, // 傳遞首次載入標記
@@ -186,6 +196,12 @@ export function useBroadcasts({
         setHasPrev(response.has_prev)
         setCurrentPage(response.page)
 
+        // 標記首次載入已完成
+        if (isInitialLoad) {
+          setHasInitialLoaded(true)
+          console.log(`✅ 首次載入完成，載入 ${deduplicatedMessages.length} 筆資料`)
+        }
+
         // 如果有新訊息，在控制台顯示通知
         const newMessagesCount = deduplicatedMessages.filter((msg) => msg.isNew).length
         if (newMessagesCount > 0 && !isInitialLoad) {
@@ -202,9 +218,10 @@ export function useBroadcasts({
       } finally {
         setLoading(false)
         setIsInitialLoading(false)
+        setIsRequestInProgress(false) // 標記請求結束
       }
     },
-    [filters.playerName, initialPageSize, mounted, markNewMessages, previousBroadcastIds.size],
+    [filters.playerName, initialPageSize, mounted, markNewMessages, deduplicateMessages, previousBroadcastIds.size],
   )
 
   // 更新篩選條件
@@ -308,13 +325,17 @@ export function useBroadcasts({
     [allBroadcasts, deduplicateMessages],
   )
 
-  // 當搜尋關鍵字或訊息類型改變時執行搜尋
+  // 當搜尋關鍵字或訊息類型改變時執行搜尋 - 添加防抖
   useEffect(() => {
-    if (filters.keyword.trim()) {
-      performClientSearch(filters.keyword, filters.messageType)
-    } else {
-      setFilteredBroadcasts([])
-    }
+    const timeoutId = setTimeout(() => {
+      if (filters.keyword.trim()) {
+        performClientSearch(filters.keyword, filters.messageType)
+      } else {
+        setFilteredBroadcasts([])
+      }
+    }, 300) // 300ms 防抖
+
+    return () => clearTimeout(timeoutId)
   }, [filters.keyword, filters.messageType, performClientSearch])
 
   // 初始載入和篩選變更時重新載入
@@ -337,6 +358,11 @@ export function useBroadcasts({
     if (activityState.shouldPauseRequests) {
       console.log(`⏸️ 暫停 API 請求 - 頁面可見: ${activityState.isPageVisible}, 用戶活躍: ${activityState.isUserActive}`)
       setCountdown(0)
+      return
+    }
+
+    // 如果有請求正在進行中，暫停倒數計時
+    if (isRequestInProgress) {
       return
     }
 
@@ -365,7 +391,7 @@ export function useBroadcasts({
       })
     }, 1000)
 
-    return () => clearInterval(countdownInterval)
+        return () => clearInterval(countdownInterval)
   }, [
     autoRefresh,
     refreshInterval,
@@ -374,19 +400,32 @@ export function useBroadcasts({
     isPaused,
     isHovering,
     countdown,
+    isRequestInProgress,
     activityState.shouldPauseRequests,
     activityState.getRecommendedInterval,
     activityState.isPageVisible,
     activityState.isUserActive
   ])
 
-  // 定期移除過期的新訊息標記
+  // 定期移除過期的新訊息標記 - 優化效能
   useEffect(() => {
     const interval = setInterval(() => {
-      setBroadcasts((prev) => removeExpiredNewFlags(prev))
-      setAllBroadcasts((prev) => removeExpiredNewFlags(prev))
-      setFilteredBroadcasts((prev) => removeExpiredNewFlags(prev))
-    }, 1000) // 每秒檢查一次
+      // 只有在有新訊息時才執行清理
+      setBroadcasts((prev) => {
+        const hasNewMessages = prev.some(msg => msg.isNew)
+        return hasNewMessages ? removeExpiredNewFlags(prev) : prev
+      })
+
+      setAllBroadcasts((prev) => {
+        const hasNewMessages = prev.some(msg => msg.isNew)
+        return hasNewMessages ? removeExpiredNewFlags(prev) : prev
+      })
+
+      setFilteredBroadcasts((prev) => {
+        const hasNewMessages = prev.some(msg => msg.isNew)
+        return hasNewMessages ? removeExpiredNewFlags(prev) : prev
+      })
+    }, 2000) // 改為 2 秒檢查一次，減少效能消耗
 
     return () => clearInterval(interval)
   }, [removeExpiredNewFlags])
@@ -478,6 +517,7 @@ export function useBroadcasts({
     isPaused: mounted ? isPaused : false,
     isHovering: mounted ? isHovering : false,
     countdown: mounted ? countdown : 0,
+    isRequestInProgress: mounted ? isRequestInProgress : false,
 
     // 篩選
     filters,
