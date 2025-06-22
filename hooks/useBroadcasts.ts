@@ -109,6 +109,7 @@ export function useBroadcasts({
           messageType: isInitialLoad ? undefined : (filters.messageType === "all" ? undefined : filters.messageType),
           playerName: filters.playerName || undefined,
           initialLoad: isInitialLoad, // 傳遞首次載入標記
+          hours: isInitialLoad ? 168 : 24, // 首次載入搜尋 7 天，後續更新搜尋 1 天
         })
 
         // 標記新訊息
@@ -120,7 +121,28 @@ export function useBroadcasts({
 
         // 如果是第一頁，儲存所有資料用於搜尋
         if (page === 1) {
-          setAllBroadcasts(messagesWithNewFlags)
+          // 保留更多資料用於搜尋，避免覆蓋
+          setAllBroadcasts(prevAll => {
+            // 如果是首次載入，直接使用新資料
+            if (isInitialLoad) {
+              console.log(`🔄 [首次載入] 載入 ${messagesWithNewFlags.length} 筆資料用於搜尋`)
+              return messagesWithNewFlags
+            }
+            
+            // 非首次載入時，合併新舊資料並去重
+            const existingIds = new Set(prevAll.map(msg => msg.id))
+            const newMessages = messagesWithNewFlags.filter(msg => !existingIds.has(msg.id))
+            const combined = [...newMessages, ...prevAll]
+            
+            console.log(`🔄 [資料更新] 新增 ${newMessages.length} 筆，總共 ${combined.length} 筆可搜尋`)
+            
+            // 按時間排序並限制總數量，避免記憶體過度使用
+            const sorted = combined
+              .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+              .slice(0, 10000) // 保留最新的 10000 筆用於搜尋
+              
+            return sorted
+          })
         }
 
         setBroadcasts(messagesWithNewFlags)
@@ -225,6 +247,24 @@ export function useBroadcasts({
       })
 
       setFilteredBroadcasts(filtered)
+      
+      // 分析搜尋資料的時間範圍
+      if (allBroadcasts.length > 0) {
+        const timestamps = allBroadcasts.map(b => new Date(b.timestamp).getTime())
+        const oldestTime = Math.min(...timestamps)
+        const newestTime = Math.max(...timestamps)
+        const timeRangeHours = Math.round((newestTime - oldestTime) / (1000 * 60 * 60 * 24 * 10)) / 100 // 天數，保留兩位小數
+        
+        console.log(`🔍 搜尋 "${searchTerm}":`, {
+          找到結果: filtered.length,
+          搜尋範圍: `${allBroadcasts.length} 筆資料`,
+          時間跨度: `${timeRangeHours} 天`,
+          最舊資料: new Date(oldestTime).toLocaleString(),
+          最新資料: new Date(newestTime).toLocaleString()
+        })
+      } else {
+        console.log(`🔍 搜尋 "${searchTerm}" 無可搜尋資料`)
+      }
     },
     [allBroadcasts],
   )

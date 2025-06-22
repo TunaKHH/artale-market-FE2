@@ -17,7 +17,7 @@ export function formatRetryTime(seconds: number): string {
 export function handleRateLimitError(error: RateLimitError): {
   title: string
   message: string
-  details?: any
+  details?: unknown
   retryAfter?: number
 } {
   const { rateLimitInfo, retryAfter } = error

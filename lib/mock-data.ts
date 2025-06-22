@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger"
 // 測試用假資料
 export interface MockBroadcastMessage {
   id: number
@@ -9,7 +10,7 @@ export interface MockBroadcastMessage {
   timestamp: string
   ai_analyzed: boolean
   ai_confidence?: number
-  ai_result?: any
+  ai_result?: unknown
 }
 
 // 生成隨機時間戳（最近30分鐘內）
@@ -282,7 +283,7 @@ export const generateMockStats = (broadcasts: MockBroadcastMessage[]) => {
 export const isProductionEnvironment = (): boolean => {
   // 優先檢查環境變數 NEXT_PUBLIC_IS_PRODUCTION
   if (process.env.NEXT_PUBLIC_IS_PRODUCTION === "true") {
-    console.log("🚀 正式站環境（環境變數設定）")
+    logger.info("正式站環境（環境變數設定）")
     return true
   }
 

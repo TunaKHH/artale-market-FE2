@@ -341,6 +341,7 @@ export async function getBroadcasts({
   playerName,
   keyword,
   initialLoad = false,
+  hours = 168, // 預設搜尋 7 天 (168 小時)
 }: {
   page?: number
   pageSize?: number
@@ -348,8 +349,9 @@ export async function getBroadcasts({
   playerName?: string
   keyword?: string
   initialLoad?: boolean
+  hours?: number
 } = {}): Promise<BroadcastsResponse> {
-  console.log("📡 [API] 開始請求廣播訊息:", { page, pageSize, messageType, playerName, keyword, initialLoad })
+  console.log("📡 [API] 開始請求廣播訊息:", { page, pageSize, messageType, playerName, keyword, initialLoad, hours })
 
   // 檢查是否應該直接使用假資料
   if (shouldDirectlyUseMockData()) {
@@ -369,6 +371,7 @@ export async function getBroadcasts({
   const params = new URLSearchParams({
     page: page.toString(),
     page_size: limitedPageSize.toString(),
+    hours: hours.toString(), // 加入時間範圍參數
   })
 
   // 加入首次載入參數
