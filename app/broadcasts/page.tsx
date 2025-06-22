@@ -105,7 +105,7 @@ const PlayerCopyButton = ({
       setTimeout(() => setCopied(false), 2000) // 2秒後恢復原狀
 
       // 追蹤複製行為
-      analytics.trackUserBehavior("player_name_copy", {
+      analytics.trackAction("player_name_copy", "user_behavior", {
         player_name: playerName,
         has_player_id: !!playerId,
         copy_format: playerId ? "name_with_id" : "name_only",
@@ -156,7 +156,7 @@ const FavoriteButton = ({
 
         // 追蹤取消收藏
         if (analytics) {
-          analytics.trackUserBehavior("unfavorite", {
+          analytics.trackAction("unfavorite", "user_behavior", {
             broadcast_id: broadcast.id,
             player_name: broadcast.player_name,
             message_type: broadcast.message_type,
@@ -175,7 +175,7 @@ const FavoriteButton = ({
 
         // 追蹤收藏行為
         if (analytics) {
-          analytics.trackUserBehavior("favorite", {
+          analytics.trackAction("favorite", "user_behavior", {
             broadcast_id: broadcast.id,
             player_name: broadcast.player_name,
             message_type: broadcast.message_type,
@@ -339,7 +339,7 @@ export default function BroadcastsPage() {
     if (value.trim()) {
       const timer = setTimeout(() => {
         analytics.trackSearch(value, filters.messageType, broadcasts.length)
-        analytics.trackFeatureUsage("search", {
+        analytics.trackAction("search", "feature_usage", {
           search_length: value.length,
           has_filters: filters.messageType !== "all",
           current_message_type: filters.messageType,
@@ -358,7 +358,7 @@ export default function BroadcastsPage() {
     // 追蹤手動搜尋行為
     if (searchTerm) {
       analytics.trackSearch(searchTerm, filters.messageType, broadcasts.length)
-      analytics.trackFeatureUsage("manual_search", {
+      analytics.trackAction("manual_search", "feature_usage", {
         search_length: searchTerm.length,
         has_filters: filters.messageType !== "all",
         current_message_type: filters.messageType,
@@ -396,7 +396,7 @@ export default function BroadcastsPage() {
 
     // 追蹤篩選行為
     analytics.trackFilter("message_type", newMessageType)
-    analytics.trackUserBehavior("badge_click", {
+    analytics.trackAction("badge_click", "user_behavior", {
       from_type: filters.messageType,
       to_type: newMessageType,
       action: newMessageType === "all" ? "clear_filter" : "apply_filter",
@@ -509,7 +509,7 @@ export default function BroadcastsPage() {
               <Button
                 onClick={() => {
                   refresh()
-                  analytics.trackUserBehavior("manual_refresh", {
+                  analytics.trackAction("manual_refresh", "user_behavior", {
                     current_filter: filters.messageType,
                     has_search: !!filters.keyword,
                     total_messages: totalCount,
@@ -756,7 +756,7 @@ export default function BroadcastsPage() {
               <Button
                 onClick={() => {
                   goToPage(currentPage - 1)
-                  analytics.trackUserBehavior("pagination", {
+                  analytics.trackAction("pagination", "user_behavior", {
                     action: "previous_page",
                     from_page: currentPage,
                     to_page: currentPage - 1,
@@ -777,7 +777,7 @@ export default function BroadcastsPage() {
               <Button
                 onClick={() => {
                   goToPage(currentPage + 1)
-                  analytics.trackUserBehavior("pagination", {
+                  analytics.trackAction("pagination", "user_behavior", {
                     action: "next_page",
                     from_page: currentPage,
                     to_page: currentPage + 1,
