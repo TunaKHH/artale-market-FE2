@@ -577,20 +577,37 @@ export default function BroadcastsPage() {
             // 顯示載入中骨架
             Array.from({ length: 5 }).map((_, index) => <BroadcastSkeleton key={index} />)}
 
-          {displayMessages.map((broadcast) => (
+          {displayMessages.map((broadcast: any) => (
             <Card
               key={broadcast.id}
-              className={`transition-all duration-200 cursor-pointer ${
+              className={`transition-all duration-500 cursor-pointer ${
                 selectedBroadcastId === broadcast.id
                   ? "shadow-lg border-primary bg-primary/5"
                   : "hover:shadow-md hover:border-muted-foreground"
-              } ${filters.messageType === "favorites" ? "border-blue-200 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-950/30" : ""}`}
+              } ${
+                filters.messageType === "favorites"
+                  ? "border-blue-200 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-950/30"
+                  : ""
+              } ${
+                broadcast.isNew
+                  ? "border-green-400 bg-green-50/50 dark:border-green-600 dark:bg-green-950/30 shadow-md animate-in slide-in-from-top-2 duration-500"
+                  : ""
+              }`}
               onClick={() => handleBroadcastClick(broadcast.id)}
             >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 pr-4">
                     <div className="flex items-center space-x-2 mb-2">
+                      {/* 新訊息指示器 */}
+                      {broadcast.isNew && (
+                        <Badge
+                          variant="outline"
+                          className="text-green-700 border-green-400 bg-green-100 dark:text-green-400 dark:border-green-600 dark:bg-green-950 animate-pulse"
+                        >
+                          新
+                        </Badge>
+                      )}
                       <Badge
                         variant={getBadgeColor(broadcast.message_type) as any}
                         className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-sm ${
@@ -606,7 +623,7 @@ export default function BroadcastsPage() {
                         <span
                           className={`text-sm font-medium ${
                             selectedBroadcastId === broadcast.id ? "text-primary" : "text-primary"
-                          }`}
+                          } ${broadcast.isNew ? "text-green-700 dark:text-green-400" : ""}`}
                         >
                           {broadcast.player_name}
                         </span>
@@ -633,7 +650,7 @@ export default function BroadcastsPage() {
                     <p
                       className={`mb-2 ${
                         selectedBroadcastId === broadcast.id ? "text-foreground font-medium" : "text-foreground"
-                      }`}
+                      } ${broadcast.isNew ? "text-green-800 dark:text-green-300 font-medium" : ""}`}
                     >
                       {broadcast.content}
                     </p>

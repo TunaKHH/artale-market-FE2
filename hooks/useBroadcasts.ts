@@ -9,12 +9,18 @@ interface UseBroadcastsOptions {
   initialPageSize?: number
 }
 
+// 擴展 BroadcastMessage 類型以包含新訊息標記
+interface ExtendedBroadcastMessage extends BroadcastMessage {
+  isNew?: boolean
+  newMessageTimestamp?: number
+}
+
 export function useBroadcasts({
   autoRefresh = true,
   refreshInterval = 3000, // 3秒
   initialPageSize = 50,
 }: UseBroadcastsOptions = {}) {
-  const [broadcasts, setBroadcasts] = useState<BroadcastMessage[]>([])
+  const [broadcasts, setBroadcasts] = useState<ExtendedBroadcastMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rateLimitError, setRateLimitError] = useState<string | null>(null)
@@ -28,8 +34,9 @@ export function useBroadcasts({
   const [countdown, setCountdown] = useState(0)
   const [savedCountdown, setSavedCountdown] = useState(0)
 
-  const [allBroadcasts, setAllBroadcasts] = useState<BroadcastMessage[]>([]) // 儲存所有廣播資料
-  const [filteredBroadcasts, setFilteredBroadcasts] = useState<BroadcastMessage[]>([]) // 搜尋後的結果
+  const [allBroadcasts, setAllBroadcasts] = useState<ExtendedBroadcastMessage[]>([]) // 儲存所有廣播資料
+  const [filteredBroadcasts, setFilteredBroadcasts] = useState<ExtendedBroadcastMessage[]>([]) // 搜尋後的結果
+  const [previousBroadcastIds, setPreviousBroadcastIds] = useState<Set<number>>(new Set()) // 追蹤之前的訊息 ID
 
   // 篩選狀態
   const [filters, setFilters] = useState({
@@ -38,6 +45,40 @@ export function useBroadcasts({
     playerName: "",
     server: "all",
   })
+
+  // 標記新訊息的函數
+  const markNewMessages = useCallback(
+    (newMessages: BroadcastMessage[], isInitialLoad = false): ExtendedBroadcastMessage[] => {
+      if (isInitialLoad) {
+        // 初始載入時不標記任何訊息為新訊息
+        return newMessages.map((msg) => ({ ...msg, isNew: false }))
+      }
+
+      const now = Date.now()
+      return newMessages.map((msg) => {
+        const isNewMessage = !previousBroadcastIds.has(msg.id)
+        return {
+          ...msg,
+          isNew: isNewMessage,
+          newMessageTimestamp: isNewMessage ? now : undefined,
+        }
+      })
+    },
+    [previousBroadcastIds],
+  )
+
+  // 移除過期的新訊息標記
+  const removeExpiredNewFlags = useCallback((messages: ExtendedBroadcastMessage[]) => {
+    const now = Date.now()
+    const NEW_MESSAGE_DURATION = 5000 // 5秒後移除新訊息標記
+
+    return messages.map((msg) => {
+      if (msg.isNew && msg.newMessageTimestamp && now - msg.newMessageTimestamp > NEW_MESSAGE_DURATION) {
+        return { ...msg, isNew: false, newMessageTimestamp: undefined }
+      }
+      return msg
+    })
+  }, [])
 
   // 載入廣播訊息
   const loadBroadcasts = useCallback(
@@ -59,16 +100,30 @@ export function useBroadcasts({
           playerName: filters.playerName || undefined,
         })
 
+        // 標記新訊息
+        const isInitialLoad = previousBroadcastIds.size === 0
+        const messagesWithNewFlags = markNewMessages(response.messages, isInitialLoad)
+
+        // 更新之前的訊息 ID 集合
+        const newIds = new Set(response.messages.map((msg) => msg.id))
+        setPreviousBroadcastIds(newIds)
+
         // 如果是第一頁，儲存所有資料用於搜尋
         if (page === 1) {
-          setAllBroadcasts(response.messages)
+          setAllBroadcasts(messagesWithNewFlags)
         }
 
-        setBroadcasts(response.messages)
+        setBroadcasts(messagesWithNewFlags)
         setTotalCount(response.total)
         setHasNext(response.has_next)
         setHasPrev(response.has_prev)
         setCurrentPage(response.page)
+
+        // 如果有新訊息，在控制台顯示通知
+        const newMessagesCount = messagesWithNewFlags.filter((msg) => msg.isNew).length
+        if (newMessagesCount > 0 && !isInitialLoad) {
+          console.log(`🆕 收到 ${newMessagesCount} 條新廣播訊息`)
+        }
       } catch (err) {
         console.error("載入廣播訊息失敗:", err)
 
@@ -81,7 +136,7 @@ export function useBroadcasts({
         setLoading(false)
       }
     },
-    [filters.messageType, filters.playerName, initialPageSize, mounted],
+    [filters.messageType, filters.playerName, initialPageSize, mounted, markNewMessages, previousBroadcastIds.size],
   )
 
   // 更新篩選條件
@@ -211,6 +266,17 @@ export function useBroadcasts({
 
     return () => clearInterval(countdownInterval)
   }, [autoRefresh, refreshInterval, refresh, mounted, isPaused, isHovering, countdown])
+
+  // 定期移除過期的新訊息標記
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBroadcasts((prev) => removeExpiredNewFlags(prev))
+      setAllBroadcasts((prev) => removeExpiredNewFlags(prev))
+      setFilteredBroadcasts((prev) => removeExpiredNewFlags(prev))
+    }, 1000) // 每秒檢查一次
+
+    return () => clearInterval(interval)
+  }, [removeExpiredNewFlags])
 
   // 取得統計資料 - 智能統計邏輯
   const getTypeCounts = useCallback(() => {
