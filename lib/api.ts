@@ -317,9 +317,16 @@ const getMockBroadcastsResponse = ({
 
 // 檢查是否應該直接使用假資料
 const shouldDirectlyUseMockData = (): boolean => {
+  // 強制使用真實 API 進行測試
+  const forceUseRealApi = true
+  if (forceUseRealApi) {
+    console.log("🚀 [強制模式] 使用真實 API，跳過假資料")
+    return false
+  }
+
   // 如果在測試環境且 API_BASE_URL 指向不存在的服務，直接使用假資料
   const isTest = isTestEnvironment()
-  const hasInvalidApi = !API_BASE_URL || API_BASE_URL.includes("localhost:8000")
+  const hasInvalidApi = !API_BASE_URL
 
   console.log("🔍 直接使用假資料檢查:", { isTest, hasInvalidApi, API_BASE_URL })
 
@@ -333,14 +340,16 @@ export async function getBroadcasts({
   messageType,
   playerName,
   keyword,
+  initialLoad = false,
 }: {
   page?: number
   pageSize?: number
   messageType?: string
   playerName?: string
   keyword?: string
+  initialLoad?: boolean
 } = {}): Promise<BroadcastsResponse> {
-  console.log("📡 [API] 開始請求廣播訊息:", { page, pageSize, messageType, playerName, keyword })
+  console.log("📡 [API] 開始請求廣播訊息:", { page, pageSize, messageType, playerName, keyword, initialLoad })
 
   // 檢查是否應該直接使用假資料
   if (shouldDirectlyUseMockData()) {
@@ -354,13 +363,18 @@ export async function getBroadcasts({
     })
   }
 
-  // 強制限制每頁最多 50 筆，防止過載
-  const limitedPageSize = Math.min(Math.max(pageSize, 1), 50)
+  // 首次載入時使用 5000（後端會忽略此值並返回全部），否則限制為500筆
+  const limitedPageSize = initialLoad ? 5000 : Math.min(Math.max(pageSize, 1), 500)
 
   const params = new URLSearchParams({
     page: page.toString(),
     page_size: limitedPageSize.toString(),
   })
+
+  // 加入首次載入參數
+  if (initialLoad) {
+    params.append("initial_load", "true")
+  }
 
   if (messageType && messageType !== "all") {
     params.append("message_type", messageType)

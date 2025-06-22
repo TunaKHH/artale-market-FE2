@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { getBroadcasts, type BroadcastMessage, type BroadcastsResponse } from "@/lib/api"
+import { useActivityDetection } from "./useActivityDetection"
 
 interface UseBroadcastsOptions {
   autoRefresh?: boolean
@@ -18,14 +19,13 @@ interface ExtendedBroadcastMessage extends BroadcastMessage {
 export function useBroadcasts({
   autoRefresh = true,
   refreshInterval = 3000, // 3秒
-  initialPageSize = 50,
+  initialPageSize = 100,
 }: UseBroadcastsOptions = {}) {
   const [broadcasts, setBroadcasts] = useState<ExtendedBroadcastMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rateLimitError, setRateLimitError] = useState<string | null>(null)
-  const [totalCount, setTotalCount] = useState(0)
   const [hasNext, setHasNext] = useState(false)
   const [hasPrev, setHasPrev] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
@@ -34,6 +34,12 @@ export function useBroadcasts({
   const [isHovering, setIsHovering] = useState(false)
   const [countdown, setCountdown] = useState(0)
   const [savedCountdown, setSavedCountdown] = useState(0)
+
+  // 活動檢測
+  const activityState = useActivityDetection({
+    inactivityThreshold: 5 * 60 * 1000, // 5分鐘無活動
+    checkInterval: 1000, // 每秒檢查
+  })
 
   const [allBroadcasts, setAllBroadcasts] = useState<ExtendedBroadcastMessage[]>([]) // 儲存所有廣播資料
   const [filteredBroadcasts, setFilteredBroadcasts] = useState<ExtendedBroadcastMessage[]>([]) // 搜尋後的結果
@@ -93,16 +99,19 @@ export function useBroadcasts({
 
         let response: BroadcastsResponse
 
-        // 移除搜尋邏輯，只使用一般列表 API
+        // 判斷是否為首次載入
+        const isInitialLoad = previousBroadcastIds.size === 0
+        
+        // 首次載入時不傳送 messageType 篩選，獲取所有資料
         response = await getBroadcasts({
           page,
-          pageSize: Math.min(initialPageSize, 50),
-          messageType: filters.messageType === "all" ? undefined : filters.messageType,
+          pageSize: isInitialLoad ? 5000 : Math.min(initialPageSize, 200), // 首次載入時不限制，後續為 100 筆
+          messageType: isInitialLoad ? undefined : (filters.messageType === "all" ? undefined : filters.messageType),
           playerName: filters.playerName || undefined,
+          initialLoad: isInitialLoad, // 傳遞首次載入標記
         })
 
         // 標記新訊息
-        const isInitialLoad = previousBroadcastIds.size === 0
         const messagesWithNewFlags = markNewMessages(response.messages, isInitialLoad)
 
         // 更新之前的訊息 ID 集合
@@ -115,7 +124,6 @@ export function useBroadcasts({
         }
 
         setBroadcasts(messagesWithNewFlags)
-        setTotalCount(response.total)
         setHasNext(response.has_next)
         setHasPrev(response.has_prev)
         setCurrentPage(response.page)
@@ -138,7 +146,7 @@ export function useBroadcasts({
         setIsInitialLoading(false)
       }
     },
-    [filters.messageType, filters.playerName, initialPageSize, mounted, markNewMessages, previousBroadcastIds.size],
+    [filters.playerName, initialPageSize, mounted, markNewMessages, previousBroadcastIds.size],
   )
 
   // 更新篩選條件
@@ -237,7 +245,7 @@ export function useBroadcasts({
     }
   }, [loadBroadcasts, mounted])
 
-  // 自動刷新與倒數計時
+  // 自動刷新與倒數計時 - 整合智能間隔
   useEffect(() => {
     if (!autoRefresh || !mounted || isPaused) {
       if (!isHovering) {
@@ -246,28 +254,52 @@ export function useBroadcasts({
       return
     }
 
+    // 如果頁面不可見或用戶非活躍，暫停請求
+    if (activityState.shouldPauseRequests) {
+      console.log(`⏸️ 暫停 API 請求 - 頁面可見: ${activityState.isPageVisible}, 用戶活躍: ${activityState.isUserActive}`)
+      setCountdown(0)
+      return
+    }
+
     if (isHovering) {
       // hover 時不進行倒數，但保持當前值
       return
     }
 
+    // 獲取智能調整後的間隔
+    const smartInterval = activityState.getRecommendedInterval(refreshInterval)
+    const smartCountdown = Math.floor(smartInterval / 1000)
+
     // 如果沒有有效的倒數，重新開始
     if (countdown <= 0) {
-      setCountdown(Math.floor(refreshInterval / 1000))
+      setCountdown(smartCountdown)
+      console.log(`🤖 智能間隔調整: ${refreshInterval}ms → ${smartInterval}ms (${smartCountdown}秒)`)
     }
 
     const countdownInterval = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           refresh()
-          return Math.floor(refreshInterval / 1000)
+          return smartCountdown
         }
         return prev - 1
       })
     }, 1000)
 
     return () => clearInterval(countdownInterval)
-  }, [autoRefresh, refreshInterval, refresh, mounted, isPaused, isHovering, countdown])
+  }, [
+    autoRefresh, 
+    refreshInterval, 
+    refresh, 
+    mounted, 
+    isPaused, 
+    isHovering, 
+    countdown,
+    activityState.shouldPauseRequests,
+    activityState.getRecommendedInterval,
+    activityState.isPageVisible,
+    activityState.isUserActive
+  ])
 
   // 定期移除過期的新訊息標記
   useEffect(() => {
@@ -305,10 +337,55 @@ export function useBroadcasts({
     }
   }, [broadcasts, filteredBroadcasts, filters.messageType, filters.keyword])
 
+  // 根據 messageType 篩選資料
+  const getFilteredBroadcasts = useCallback(() => {
+    if (!mounted) return []
+    
+    let data = filters.keyword.trim() ? filteredBroadcasts : broadcasts
+    
+    // 根據分類篩選
+    if (filters.messageType !== "all") {
+      data = data.filter(broadcast => broadcast.message_type === filters.messageType)
+    }
+    
+    // 無搜尋時限制顯示 30 筆，有搜尋時顯示全部篩選結果
+    if (!filters.keyword.trim()) {
+      data = data.slice(0, 30)
+    }
+    
+    return data
+  }, [mounted, filters.keyword, filteredBroadcasts, broadcasts, filters.messageType])
+
+  const displayedBroadcasts = getFilteredBroadcasts()
+
+  // 計算實際總資料量
+  const getActualTotalCount = useCallback(() => {
+    if (!mounted) return 0
+    
+    // 如果有搜尋，返回搜尋結果的總量
+    if (filters.keyword.trim()) {
+      let searchData = filteredBroadcasts
+      // 根據分類篩選
+      if (filters.messageType !== "all") {
+        searchData = searchData.filter(broadcast => broadcast.message_type === filters.messageType)
+      }
+      return searchData.length
+    }
+    
+    // 無搜尋時，返回當前分類的全部資料量
+    if (filters.messageType !== "all") {
+      return broadcasts.filter(broadcast => broadcast.message_type === filters.messageType).length
+    }
+    
+    // 無搜尋且無分類篩選時，返回全部資料量
+    return broadcasts.length
+  }, [mounted, filters.keyword, filters.messageType, filteredBroadcasts, broadcasts])
+
   return {
-    // 資料 - 如果有搜尋關鍵字就顯示搜尋結果，否則顯示原始資料
-    broadcasts: mounted ? (filters.keyword.trim() ? filteredBroadcasts : broadcasts) : [],
-    totalCount: mounted ? (filters.keyword.trim() ? filteredBroadcasts.length : totalCount) : 0,
+    // 資料 - 經過關鍵字和分類篩選的資料
+    broadcasts: displayedBroadcasts,
+    totalCount: getActualTotalCount(),
+    displayedCount: mounted ? displayedBroadcasts.length : 0,
     typeCounts: mounted ? getTypeCounts() : { all: 0, sell: 0, buy: 0, team: 0, other: 0 },
 
     // 其他狀態保持不變...
@@ -334,5 +411,14 @@ export function useBroadcasts({
     clearRateLimitError,
     togglePause,
     setHoverState,
+
+    // 活動狀態資訊
+    activityInfo: {
+      isPageVisible: activityState.isPageVisible,
+      isUserActive: activityState.isUserActive,
+      shouldPauseRequests: activityState.shouldPauseRequests,
+      timeSinceLastActivity: activityState.timeSinceLastActivity,
+      recommendedInterval: activityState.getRecommendedInterval(refreshInterval),
+    },
   }
 }

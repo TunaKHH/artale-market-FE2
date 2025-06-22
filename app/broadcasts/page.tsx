@@ -182,11 +182,10 @@ const FavoriteButton = ({
   return (
     <button
       onClick={handleFavorite}
-      className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-all duration-200 hover:scale-105 ${
-        isFavorited
+      className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-all duration-200 hover:scale-105 ${isFavorited
           ? "text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900 dark:text-blue-400"
           : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
-      }`}
+        }`}
       title={isFavorited ? "取消收藏" : "收藏此訊息"}
     >
       <Bookmark className={`w-4 h-4 ${isFavorited ? "fill-current" : ""}`} />
@@ -425,19 +424,19 @@ export default function BroadcastsPage() {
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault()
-        setSelectedHistoryIndex((prev) => 
+        setSelectedHistoryIndex((prev) =>
           prev < searchHistory.length - 1 ? prev + 1 : prev
         )
         if (!showSearchHistory) {
           setShowSearchHistory(true)
         }
         break
-      
+
       case "ArrowUp":
         e.preventDefault()
         setSelectedHistoryIndex((prev) => prev > 0 ? prev - 1 : -1)
         break
-      
+
       case "Enter":
         e.preventDefault()
         if (selectedHistoryIndex >= 0 && selectedHistoryIndex < searchHistory.length) {
@@ -446,7 +445,7 @@ export default function BroadcastsPage() {
           handleSearch()
         }
         break
-      
+
       case "Escape":
         setShowSearchHistory(false)
         setSelectedHistoryIndex(-1)
@@ -556,8 +555,7 @@ export default function BroadcastsPage() {
               </>
             ) : (
               <>
-                即時顯示遊戲內的廣播訊息，每 3 秒自動更新，包括交易、組隊、公會招募等。 目前顯示{" "}
-                <span className="font-semibold text-primary">{totalCount}</span> 條廣播訊息。
+                即時顯示遊戲內的廣播訊息，包括交易、組隊、公會招募等。
                 {showTestMode && (
                   <span className="ml-2 text-orange-600">🧪 目前使用測試資料，API 連線失敗時會自動切換。</span>
                 )}
@@ -653,18 +651,16 @@ export default function BroadcastsPage() {
                         <button
                           key={index}
                           onClick={() => useHistorySearch(term)}
-                          className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between group ${
-                            index === selectedHistoryIndex 
-                              ? "bg-primary text-primary-foreground" 
+                          className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between group ${index === selectedHistoryIndex
+                              ? "bg-primary text-primary-foreground"
                               : "hover:bg-muted"
-                          }`}
+                            }`}
                         >
                           <span className="truncate">{term}</span>
-                          <Search className={`w-3 h-3 transition-opacity ${
-                            index === selectedHistoryIndex 
-                              ? "text-primary-foreground opacity-100" 
+                          <Search className={`w-3 h-3 transition-opacity ${index === selectedHistoryIndex
+                              ? "text-primary-foreground opacity-100"
                               : "text-muted-foreground opacity-0 group-hover:opacity-100"
-                          }`} />
+                            }`} />
                         </button>
                       ))}
                     </div>
@@ -719,19 +715,16 @@ export default function BroadcastsPage() {
           {displayMessages.map((broadcast: any) => (
             <Card
               key={broadcast.id}
-              className={`transition-all duration-500 cursor-pointer ${
-                selectedBroadcastId === broadcast.id
+              className={`transition-all duration-500 cursor-pointer ${selectedBroadcastId === broadcast.id
                   ? "shadow-lg border-primary bg-primary/5"
                   : "hover:shadow-md hover:border-muted-foreground"
-              } ${
-                filters.messageType === "favorites"
+                } ${filters.messageType === "favorites"
                   ? "border-blue-200 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-950/30"
                   : ""
-              } ${
-                broadcast.isNew
+                } ${broadcast.isNew
                   ? "border-green-400 bg-green-50/50 dark:border-green-600 dark:bg-green-950/30 shadow-md animate-in slide-in-from-top-2 duration-500"
                   : ""
-              }`}
+                }`}
               onClick={() => handleBroadcastClick(broadcast.id)}
             >
               <CardContent className="p-4">
@@ -749,9 +742,8 @@ export default function BroadcastsPage() {
                       )}
                       <Badge
                         variant={getBadgeColor(broadcast.message_type) as any}
-                        className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-sm ${
-                          filters.messageType === broadcast.message_type ? "ring-2 ring-primary ring-offset-1" : ""
-                        }`}
+                        className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-sm ${filters.messageType === broadcast.message_type ? "ring-2 ring-primary ring-offset-1" : ""
+                          }`}
                         onClick={(e) => handleBadgeClick(e, broadcast.message_type)}
                         title={`點擊篩選「${getBadgeText(broadcast.message_type)}」類型的訊息`}
                       >
@@ -760,9 +752,8 @@ export default function BroadcastsPage() {
                       <span className="text-sm text-muted-foreground">{broadcast.channel}</span>
                       <div className="flex items-center">
                         <span
-                          className={`text-sm font-medium ${
-                            selectedBroadcastId === broadcast.id ? "text-primary" : "text-primary"
-                          } ${broadcast.isNew ? "text-green-700 dark:text-green-400" : ""}`}
+                          className={`text-sm font-medium ${selectedBroadcastId === broadcast.id ? "text-primary" : "text-primary"
+                            } ${broadcast.isNew ? "text-green-700 dark:text-green-400" : ""}`}
                         >
                           {broadcast.player_name}
                         </span>
@@ -787,9 +778,8 @@ export default function BroadcastsPage() {
                       )}
                     </div>
                     <p
-                      className={`mb-2 ${
-                        selectedBroadcastId === broadcast.id ? "text-foreground font-medium" : "text-foreground"
-                      } ${broadcast.isNew ? "text-green-800 dark:text-green-300 font-medium" : ""}`}
+                      className={`mb-2 ${selectedBroadcastId === broadcast.id ? "text-foreground font-medium" : "text-foreground"
+                        } ${broadcast.isNew ? "text-green-800 dark:text-green-300 font-medium" : ""}`}
                     >
                       {broadcast.content}
                     </p>
