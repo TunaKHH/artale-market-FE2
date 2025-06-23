@@ -282,25 +282,16 @@ export const generateMockStats = (broadcasts: MockBroadcastMessage[]) => {
 // 檢查是否為正式站環境
 export const isProductionEnvironment = (): boolean => {
   // 優先檢查環境變數 NEXT_PUBLIC_IS_PRODUCTION
-  if (process.env.NEXT_PUBLIC_IS_PRODUCTION === "true") {
-    logger.info("正式站環境（環境變數設定）")
+  if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_IS_PRODUCTION === "true") {
     return true
   }
 
-  // 在瀏覽器環境中檢測正式站域名
-  if (typeof window !== "undefined") {
-    const hostname = window.location.hostname
-    const isProduction =
-      hostname === "artale-market-fe.vercel.app" ||
-      hostname === "artale-love.com" ||
-      hostname === "www.artale-love.com" // 正式站域名
-
-    console.log("🔍 環境檢測:", { hostname, isProduction, env: process.env.NEXT_PUBLIC_IS_PRODUCTION })
-    return isProduction
+  // 在服務器環境中檢測
+  if (typeof process !== "undefined" && process.env.NODE_ENV === "production") {
+    return true
   }
 
-  // 在服務器環境中檢測
-  return process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_IS_PRODUCTION === "true"
+  return false
 }
 
 // 檢查是否為測試環境 - 與正式站相反

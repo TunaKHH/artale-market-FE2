@@ -1,6 +1,6 @@
 "use client"
 
-import React, { memo } from "react"
+import React, { memo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { BroadcastMessage } from "@/lib/api"
@@ -9,6 +9,61 @@ import type { BroadcastMessage } from "@/lib/api"
 interface ExtendedBroadcastMessage extends BroadcastMessage {
   isNew?: boolean
   newMessageTimestamp?: number
+}
+
+// 訊息收藏按鈕組件
+const MessageFavoriteButton = ({ message }: { message: ExtendedBroadcastMessage }) => {
+  const [isFavorited, setIsFavorited] = useState(false)
+
+  // 檢查收藏狀態
+  React.useEffect(() => {
+    const favorites = JSON.parse(localStorage.getItem("broadcast-favorites") || "[]")
+    setIsFavorited(favorites.some((fav: any) => fav.id === message.id))
+  }, [message.id])
+
+  const handleFavorite = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      const favorites = JSON.parse(localStorage.getItem("broadcast-favorites") || "[]")
+
+      if (isFavorited) {
+        const newFavorites = favorites.filter((fav: any) => fav.id !== message.id)
+        localStorage.setItem("broadcast-favorites", JSON.stringify(newFavorites))
+        setIsFavorited(false)
+      } else {
+        const favoriteItem = {
+          ...message,
+          favorited_at: new Date().toISOString(),
+        }
+        favorites.push(favoriteItem)
+        localStorage.setItem("broadcast-favorites", JSON.stringify(favorites))
+        setIsFavorited(true)
+      }
+    } catch (err) {
+      console.error("收藏操作失敗:", err)
+    }
+  }
+
+  return (
+    <button
+      onClick={handleFavorite}
+      className={`inline-flex items-center justify-center w-4 h-4 transition-colors ${isFavorited
+          ? "text-blue-500 hover:text-blue-600"
+          : "text-muted-foreground hover:text-blue-500"
+        }`}
+      title={isFavorited ? "取消收藏" : "收藏此訊息"}
+    >
+      <svg
+        className="w-3 h-3"
+        fill={isFavorited ? "currentColor" : "none"}
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+      </svg>
+    </button>
+  )
 }
 
 interface MessageItemProps {
@@ -30,7 +85,7 @@ export const MessageItem = memo<MessageItemProps>(({
   showPlayerInfo = true,
   compact = false
 }) => {
-  
+
   // 訊息類型配置
   const getMessageTypeConfig = (type: string) => {
     switch (type) {
@@ -64,7 +119,7 @@ export const MessageItem = memo<MessageItemProps>(({
         }
     }
   }
-  
+
   // 格式化時間
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp)
@@ -73,7 +128,7 @@ export const MessageItem = memo<MessageItemProps>(({
     const diffMinutes = Math.floor(diffMs / (1000 * 60))
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-    
+
     if (diffMinutes < 1) {
       return "剛剛"
     } else if (diffMinutes < 60) {
@@ -91,7 +146,7 @@ export const MessageItem = memo<MessageItemProps>(({
       })
     }
   }
-  
+
   // 格式化完整時間
   const formatFullTime = (timestamp: string) => {
     const date = new Date(timestamp)
@@ -104,25 +159,25 @@ export const MessageItem = memo<MessageItemProps>(({
       second: "2-digit"
     })
   }
-  
+
   // 處理玩家名稱點擊
   const handlePlayerClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     // 這裡可以實作跳轉到玩家詳情頁面
     console.log("點擊玩家:", message.player_name)
   }
-  
+
   // 處理訊息點擊
   const handleMessageClick = () => {
     if (onClick) {
       onClick(message)
     }
   }
-  
+
   const typeConfig = getMessageTypeConfig(message.message_type)
-  
+
   return (
-    <div 
+    <div
       className={`
         group relative transition-all duration-200 ease-in-out
         ${message.isNew ? 'animate-slideInFromTop' : ''}
@@ -139,7 +194,7 @@ export const MessageItem = memo<MessageItemProps>(({
           <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
         </div>
       )}
-      
+
       <div className="flex items-start space-x-3">
         {/* 訊息類型圖示 */}
         <div className={`
@@ -148,7 +203,7 @@ export const MessageItem = memo<MessageItemProps>(({
         `}>
           {typeConfig.icon}
         </div>
-        
+
         {/* 訊息內容 */}
         <div className="flex-1 min-w-0">
           {/* 頭部資訊 */}
@@ -157,29 +212,34 @@ export const MessageItem = memo<MessageItemProps>(({
             <Badge variant="secondary" className={`text-xs ${typeConfig.color}`}>
               {typeConfig.label}
             </Badge>
-            
-            {/* 玩家名稱 */}
+
+            {/* 玩家名稱和 ID */}
             {showPlayerInfo && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-auto p-0 text-sm font-medium text-gray-700 hover:text-blue-600"
-                onClick={handlePlayerClick}
-              >
-                {message.player_name}
-              </Button>
+              <div className="flex items-center space-x-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-0 text-sm font-medium text-gray-700 hover:text-blue-600"
+                  onClick={handlePlayerClick}
+                >
+                  {message.player_id ? `${message.player_name}#${message.player_id}` : message.player_name}
+                </Button>
+                <MessageFavoriteButton
+                  message={message}
+                />
+              </div>
             )}
-            
+
             {/* 時間戳 */}
             {showTimestamp && (
-              <span 
+              <span
                 className="text-xs text-gray-500"
                 title={formatFullTime(message.timestamp)}
               >
                 {formatTime(message.timestamp)}
               </span>
             )}
-            
+
             {/* AI 分析標籤 */}
             {message.ai_analyzed && message.ai_confidence && (
               <Badge variant="outline" className="text-xs">
@@ -187,7 +247,7 @@ export const MessageItem = memo<MessageItemProps>(({
               </Badge>
             )}
           </div>
-          
+
           {/* 訊息內容 */}
           <div className={`
             text-gray-900 break-words
@@ -196,7 +256,7 @@ export const MessageItem = memo<MessageItemProps>(({
           `}>
             {message.content}
           </div>
-          
+
           {/* 頻道資訊 */}
           {message.channel && (
             <div className="mt-1 text-xs text-gray-400">
@@ -204,7 +264,7 @@ export const MessageItem = memo<MessageItemProps>(({
             </div>
           )}
         </div>
-        
+
         {/* 操作按鈕（hover 時顯示） */}
         <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-1">
           <Button
@@ -218,31 +278,11 @@ export const MessageItem = memo<MessageItemProps>(({
             }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
             </svg>
           </Button>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
-            title="分享訊息"
-            onClick={(e) => {
-              e.stopPropagation()
-              const shareText = `${message.player_name}: ${message.content}`
-              if (navigator.share) {
-                navigator.share({ text: shareText })
-              } else {
-                navigator.clipboard.writeText(shareText)
-              }
-            }}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-            </svg>
-          </Button>
+
         </div>
       </div>
     </div>

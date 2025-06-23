@@ -36,7 +36,7 @@ export function useInfiniteScroll({
   
   // 載入更多資料
   const loadMore = useCallback(async () => {
-    if (!hasMore || isLoading || isFetching || !enabled || isLoadingRef.current) {
+    if (!hasMore || isLoading || !enabled || isLoadingRef.current) {
       return
     }
     
@@ -56,7 +56,7 @@ export function useInfiniteScroll({
       setIsFetching(false)
       isLoadingRef.current = false
     }
-  }, [hasMore, isLoading, isFetching, enabled, onLoadMore])
+  }, [hasMore, isLoading, enabled, onLoadMore])
   
   // 重試載入
   const retry = useCallback(() => {

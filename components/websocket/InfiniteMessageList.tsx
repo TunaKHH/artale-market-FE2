@@ -4,7 +4,9 @@ import React, { memo, useRef, useEffect, useCallback, useState } from "react"
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll"
 import { MessageItem } from "./MessageItem"
 import { Button } from "@/components/ui/button"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { LoadingSpinner, MessageSkeleton } from "@/components/ui/loading-spinner"
+import { ErrorDisplay, LoadErrorDisplay } from "@/components/ui/error-display"
+import { IndeterminateProgressBar } from "@/components/ui/progress-bar"
 import type { BroadcastMessage } from "@/lib/api"
 
 // 擴展訊息類型
@@ -44,6 +46,7 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [scrollPosition, setScrollPosition] = useState(0)
   const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+  const [loadingProgress, setLoadingProgress] = useState(0)
   
   // 無限滾動 Hook
   const {
@@ -53,14 +56,30 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
     retry
   } = useInfiniteScroll({
     hasMore: hasMoreHistory,
-    isLoading: loading || isFetching,
+    isLoading: loading,
     threshold: 0.1,
     rootMargin: "50px",
     enabled: enableInfiniteScroll && messages.length > 0,
     onLoadMore: async () => {
       if (messages.length > 0) {
-        const oldestMessage = messages[messages.length - 1]
-        return await onLoadMore()
+        setLoadingProgress(0)
+        const progressInterval = setInterval(() => {
+          setLoadingProgress(prev => Math.min(prev + 10, 90))
+        }, 100)
+        
+        try {
+          const result = await onLoadMore()
+          setLoadingProgress(100)
+          setTimeout(() => {
+            clearInterval(progressInterval)
+            setLoadingProgress(0)
+          }, 300)
+          return result
+        } catch (error) {
+          clearInterval(progressInterval)
+          setLoadingProgress(0)
+          throw error
+        }
       }
     }
   })
@@ -131,12 +150,15 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
       const hasRealNewMessages = messages.some(msg => msg.isNew)
       
       if (hasRealNewMessages) {
-        setTimeout(() => scrollToBottom(true), 100)
+        // 使用 requestAnimationFrame 來避免頻繁滾動
+        requestAnimationFrame(() => {
+          setTimeout(() => scrollToBottom(true), 50)
+        })
       }
     }
     
     lastMessageCountRef.current = currentMessageCount
-  }, [messages, scrollToBottom, autoScroll])
+  }, [messages.length, scrollToBottom, autoScroll])  // 只依賴 messages.length 而不是整個 messages 陣列
   
   // 初始載入時滾動到底部
   useEffect(() => {
@@ -154,26 +176,9 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
     }
   }, [])
   
-  // 載入中骨架屏
-  const LoadingSkeleton = ({ count = 3 }: { count?: number }) => (
-    <div className="space-y-3 p-4">
-      {Array.from({ length: count }).map((_, index) => (
-        <div key={index} className="animate-pulse">
-          <div className="flex items-start space-x-3">
-            <div className="w-8 h-8 bg-gray-200 rounded-full flex-shrink-0"></div>
-            <div className="flex-1 space-y-2">
-              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-  
   // 空狀態
   const EmptyState = () => (
-    <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+    <div className="flex flex-col items-center justify-center py-12 text-gray-500 animate-fadeInUp">
       <div className="w-16 h-16 mb-4 rounded-full bg-gray-100 flex items-center justify-center">
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
@@ -187,37 +192,50 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
   
   // 載入更多指示器
   const LoadMoreIndicator = () => (
-    <div className="py-4">
+    <div className="py-4 animate-slideDown">
       {loadError ? (
-        <Alert>
-          <AlertDescription className="flex items-center justify-between">
-            <span>載入失敗: {loadError}</span>
-            <Button variant="outline" size="sm" onClick={retry}>
-              重試
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <LoadErrorDisplay
+          message={loadError}
+          onRetry={retry}
+          className="mx-4"
+        />
       ) : (loading || isFetching) ? (
-        <div className="flex items-center justify-center text-gray-500">
-          <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          載入歷史訊息...
+        <div className="space-y-3">
+          {/* 載入進度條 */}
+          {loadingProgress > 0 && (
+            <div className="px-4">
+              <IndeterminateProgressBar size="sm" />
+            </div>
+          )}
+          
+          {/* 載入訊息 */}
+          <div className="flex items-center justify-center">
+            <LoadingSpinner 
+              size="sm" 
+              text="載入歷史訊息..." 
+              className="text-gray-500"
+            />
+          </div>
         </div>
       ) : hasMoreHistory ? (
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center animate-scaleIn">
           <Button 
             variant="outline" 
             size="sm"
             onClick={handleManualLoadMore}
-            className="text-blue-600 hover:text-blue-800"
+            className="text-blue-600 hover:text-blue-800 transition-colors duration-200"
           >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
             載入更多歷史訊息
           </Button>
         </div>
       ) : (
-        <div className="text-center text-gray-400 text-sm">
+        <div className="text-center text-gray-400 text-sm py-2 animate-fadeInUp">
+          <svg className="w-5 h-5 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
           已載入所有歷史訊息
         </div>
       )}
@@ -229,7 +247,7 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
       {/* 滾動到底部按鈕 */}
       {showScrollToBottom && (
         <Button
-          className="absolute bottom-4 right-4 z-10 shadow-lg"
+          className="absolute bottom-4 right-4 z-10 shadow-lg animate-scaleIn hover:scale-105 transition-transform duration-200"
           size="sm"
           onClick={() => scrollToBottom(true)}
         >
@@ -238,6 +256,13 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
           </svg>
           回到底部
         </Button>
+      )}
+      
+      {/* 載入遮罩 */}
+      {loading && messages.length === 0 && (
+        <div className="absolute inset-0 z-20 loading-overlay flex items-center justify-center">
+          <LoadingSpinner size="lg" text="載入廣播訊息..." />
+        </div>
       )}
       
       {/* 訊息列表 */}
@@ -260,19 +285,27 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
         
         {/* 主要內容 */}
         {loading && messages.length === 0 ? (
-          <LoadingSkeleton count={5} />
+          <MessageSkeleton count={5} />
         ) : messages.length === 0 ? (
           <EmptyState />
         ) : (
           <div className="space-y-2 p-4">
             {messages.map((message, index) => (
-              <MessageItem
+              <div
                 key={`${message.id}-${message.timestamp}`}
-                message={message}
-                onClick={onMessageClick}
-                isFirst={index === 0}
-                isLast={index === messages.length - 1}
-              />
+                className={`${message.isNew ? 'animate-slideInFromTop' : 'animate-fadeInUp'}`}
+                style={{ 
+                  animationDelay: message.isNew ? '0ms' : `${index * 50}ms`,
+                  animationFillMode: 'both'
+                }}
+              >
+                <MessageItem
+                  message={message}
+                  onClick={onMessageClick}
+                  isFirst={index === 0}
+                  isLast={index === messages.length - 1}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -281,10 +314,18 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
       {/* 底部狀態欄 */}
       <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-t text-sm text-gray-500">
         <div className="flex items-center space-x-4">
-          <span>共 {messages.length} 筆訊息</span>
+          <span className="flex items-center space-x-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2-2z" />
+            </svg>
+            <span>共 {messages.length} 筆訊息</span>
+          </span>
           {hasMoreHistory && (
-            <span className="text-blue-600">
-              還有更多歷史訊息
+            <span className="text-blue-600 flex items-center space-x-1">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12l4-4m-4 4l4 4" />
+              </svg>
+              <span>還有更多歷史訊息</span>
             </span>
           )}
         </div>
@@ -295,8 +336,11 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
               variant="ghost"
               size="sm"
               onClick={() => scrollToTop(true)}
-              className="h-6 text-xs"
+              className="h-6 text-xs hover:bg-gray-200 transition-colors duration-200"
             >
+              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+              </svg>
               回到頂部
             </Button>
           )}
@@ -305,8 +349,11 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
               variant="ghost"
               size="sm"
               onClick={() => scrollToBottom(true)}
-              className="h-6 text-xs"
+              className="h-6 text-xs hover:bg-gray-200 transition-colors duration-200"
             >
+              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              </svg>
               滾動到底部
             </Button>
           )}

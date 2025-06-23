@@ -223,6 +223,108 @@
   }
 }
 
+/* 載入動畫 */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 自訂載入動畫類別 */
+.animate-spin-slow {
+  animation: spin 2s linear infinite;
+}
+
+.animate-indeterminate {
+  animation: indeterminate 2s ease-in-out infinite;
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.animate-slideDown {
+  animation: slideDown 0.2s ease-out;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.15s ease-out;
+}
+
+/* 載入狀態樣式 */
+.loading-overlay {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(2px);
+}
+
+.dark .loading-overlay {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+/* 錯誤狀態樣式 */
+.error-border {
+  border-left: 4px solid #ef4444;
+}
+
+.warning-border {
+  border-left: 4px solid #f59e0b;
+}
+
+.success-border {
+  border-left: 4px solid #10b981;
+}
+
+/* 通知樣式 */
+.notification-enter {
+  animation: slideInFromRight 0.3s ease-out;
+}
+
+.notification-exit {
+  animation: slideInFromRight 0.3s ease-in reverse;
+}
+
 /* 響應式設計 */
 @media (max-width: 640px) {
   .message-list {
@@ -231,5 +333,15 @@
   
   .message-item {
     padding: 0.5rem;
+  }
+  
+  .mobile-hidden {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .tablet-hidden {
+    display: none;
   }
 }
