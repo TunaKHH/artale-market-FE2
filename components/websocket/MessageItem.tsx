@@ -4,6 +4,7 @@ import React, { memo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Copy, Check } from "lucide-react"
+import { HighlightText } from "@/components/HighlightText"
 import type { BroadcastMessage } from "@/lib/api"
 
 // 擴展訊息類型
@@ -12,63 +13,16 @@ interface ExtendedBroadcastMessage extends BroadcastMessage {
   newMessageTimestamp?: number
 }
 
-// 訊息收藏按鈕組件
-const MessageFavoriteButton = ({ message }: { message: ExtendedBroadcastMessage }) => {
-  const [isFavorited, setIsFavorited] = useState(false)
-
-  // 檢查收藏狀態
-  React.useEffect(() => {
-    const favorites = JSON.parse(localStorage.getItem("broadcast-favorites") || "[]")
-    setIsFavorited(favorites.some((fav: any) => fav.id === message.id))
-  }, [message.id])
-
-  const handleFavorite = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    try {
-      const favorites = JSON.parse(localStorage.getItem("broadcast-favorites") || "[]")
-
-      if (isFavorited) {
-        const newFavorites = favorites.filter((fav: any) => fav.id !== message.id)
-        localStorage.setItem("broadcast-favorites", JSON.stringify(newFavorites))
-        setIsFavorited(false)
-      } else {
-        const favoriteItem = {
-          ...message,
-          favorited_at: new Date().toISOString(),
-        }
-        favorites.push(favoriteItem)
-        localStorage.setItem("broadcast-favorites", JSON.stringify(favorites))
-        setIsFavorited(true)
-      }
-    } catch (err) {
-      console.error("收藏操作失敗:", err)
-    }
-  }
-
-  return (
-    <button
-      onClick={handleFavorite}
-      className={`inline-flex items-center justify-center w-4 h-4 transition-colors ${isFavorited
-        ? "text-blue-500 hover:text-blue-600"
-        : "text-muted-foreground hover:text-blue-500"
-        }`}
-      title={isFavorited ? "取消收藏" : "收藏此訊息"}
-    >
-      <svg
-        className="w-3 h-3"
-        fill={isFavorited ? "currentColor" : "none"}
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-      </svg>
-    </button>
-  )
-}
-
 // 玩家複製按鈕組件
-const PlayerCopyButton = ({ playerName, playerId }: { playerName: string; playerId?: string }) => {
+const PlayerCopyButton = ({
+  playerName,
+  playerId,
+  onSwitchToFavorites
+}: {
+  playerName: string;
+  playerId?: string;
+  onSwitchToFavorites?: () => void;
+}) => {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async (e: React.MouseEvent) => {
@@ -78,6 +32,13 @@ const PlayerCopyButton = ({ playerName, playerId }: { playerName: string; player
       await navigator.clipboard.writeText(textToCopy)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
+
+      // 複製成功後自動切換到收藏分類
+      if (onSwitchToFavorites) {
+        setTimeout(() => {
+          onSwitchToFavorites()
+        }, 300) // 給一點延遲讓用戶看到複製成功的反饋
+      }
     } catch (err) {
       console.error("複製失敗:", err)
     }
@@ -97,6 +58,8 @@ const PlayerCopyButton = ({ playerName, playerId }: { playerName: string; player
 interface MessageItemProps {
   message: ExtendedBroadcastMessage
   onClick?: (message: ExtendedBroadcastMessage) => void
+  onSwitchToFavorites?: () => void
+  searchTerm?: string
   isFirst?: boolean
   isLast?: boolean
   showTimestamp?: boolean
@@ -107,6 +70,8 @@ interface MessageItemProps {
 export const MessageItem = memo<MessageItemProps>(({
   message,
   onClick,
+  onSwitchToFavorites,
+  searchTerm = "",
   isFirst = false,
   isLast = false,
   showTimestamp = true,
@@ -250,14 +215,15 @@ export const MessageItem = memo<MessageItemProps>(({
                   className="h-auto p-0 text-sm font-medium text-gray-700 hover:text-blue-600"
                   onClick={handlePlayerClick}
                 >
-                  {message.player_id ? `${message.player_name}#${message.player_id}` : message.player_name}
+                  <HighlightText
+                    text={message.player_id ? `${message.player_name}#${message.player_id}` : message.player_name}
+                    searchTerm={searchTerm}
+                  />
                 </Button>
                 <PlayerCopyButton
                   playerName={message.player_name}
                   playerId={message.player_id}
-                />
-                <MessageFavoriteButton
-                  message={message}
+                  onSwitchToFavorites={onSwitchToFavorites}
                 />
               </div>
             )}
@@ -286,7 +252,10 @@ export const MessageItem = memo<MessageItemProps>(({
             ${compact ? 'text-sm' : 'text-base'}
             ${message.isNew ? 'font-medium' : ''}
           `}>
-            {message.content}
+            <HighlightText
+              text={message.content}
+              searchTerm={searchTerm}
+            />
           </div>
 
           {/* 頻道資訊 */}
@@ -295,26 +264,6 @@ export const MessageItem = memo<MessageItemProps>(({
               頻道: {message.channel}
             </div>
           )}
-        </div>
-
-        {/* 操作按鈕（hover 時顯示） */}
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
-            title="複製訊息"
-            onClick={(e) => {
-              e.stopPropagation()
-              navigator.clipboard.writeText(message.content)
-            }}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-          </Button>
-
         </div>
       </div>
     </div>

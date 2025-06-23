@@ -21,6 +21,8 @@ interface InfiniteMessageListProps {
   hasMoreHistory?: boolean
   onLoadMore: () => Promise<ExtendedBroadcastMessage[]>
   onMessageClick?: (message: ExtendedBroadcastMessage) => void
+  onSwitchToFavorites?: () => void
+  searchTerm?: string
   className?: string
   autoScroll?: boolean
   maxHeight?: string
@@ -34,6 +36,8 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
   hasMoreHistory = false,
   onLoadMore,
   onMessageClick,
+  onSwitchToFavorites,
+  searchTerm = "",
   className = "",
   autoScroll = true,
   maxHeight = "600px",
@@ -47,7 +51,7 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
   const [scrollPosition, setScrollPosition] = useState(0)
   const [showScrollToBottom, setShowScrollToBottom] = useState(false)
   const [loadingProgress, setLoadingProgress] = useState(0)
-  
+
   // 無限滾動 Hook
   const {
     loadMoreRef,
@@ -66,7 +70,7 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
         const progressInterval = setInterval(() => {
           setLoadingProgress(prev => Math.min(prev + 10, 90))
         }, 100)
-        
+
         try {
           const result = await onLoadMore()
           setLoadingProgress(100)
@@ -83,90 +87,76 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
       }
     }
   })
-  
+
   // 檢測用戶滾動行為
   const handleScroll = useCallback(() => {
     if (!listRef.current) return
-    
+
     const { scrollTop, scrollHeight, clientHeight } = listRef.current
     const isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 10
     const isNearTop = scrollTop < 50
-    
+
     setScrollPosition(scrollTop)
     setShowScrollToBottom(!isAtBottom && scrollHeight > clientHeight)
-    
+
     // 標記用戶正在手動滾動
     isUserScrollingRef.current = true
-    
+
     // 清除之前的計時器
     if (scrollTimeoutRef.current) {
       clearTimeout(scrollTimeoutRef.current)
     }
-    
+
     // 500ms 後認為用戶停止滾動
     scrollTimeoutRef.current = setTimeout(() => {
       isUserScrollingRef.current = false
     }, 500)
   }, [])
-  
+
   // 滾動到底部
   const scrollToBottom = useCallback((smooth = true) => {
     if (!listRef.current) return
-    
+
     listRef.current.scrollTo({
       top: listRef.current.scrollHeight,
       behavior: smooth ? "smooth" : "auto"
     })
   }, [])
-  
+
   // 滾動到頂部
   const scrollToTop = useCallback((smooth = true) => {
     if (!listRef.current) return
-    
+
     listRef.current.scrollTo({
       top: 0,
       behavior: smooth ? "smooth" : "auto"
     })
   }, [])
-  
+
   // 手動載入更多
   const handleManualLoadMore = useCallback(async () => {
     if (!hasMoreHistory || loading || isFetching) return
-    
+
     try {
       await onLoadMore()
     } catch (error) {
       console.error("手動載入更多失敗:", error)
     }
   }, [hasMoreHistory, loading, isFetching, onLoadMore])
-  
-  // 當有新訊息時自動滾動（僅在用戶未手動滾動時）
+
+  // 當有新訊息時不自動滾動 - 已停用
   useEffect(() => {
     const currentMessageCount = messages.length
-    const hasNewMessages = currentMessageCount > lastMessageCountRef.current
-    
-    if (hasNewMessages && !isUserScrollingRef.current && autoScroll) {
-      // 檢查是否有真正的新訊息（isNew 標記）
-      const hasRealNewMessages = messages.some(msg => msg.isNew)
-      
-      if (hasRealNewMessages) {
-        // 使用 requestAnimationFrame 來避免頻繁滾動
-        requestAnimationFrame(() => {
-          setTimeout(() => scrollToBottom(true), 50)
-        })
-      }
-    }
-    
     lastMessageCountRef.current = currentMessageCount
-  }, [messages.length, scrollToBottom, autoScroll])  // 只依賴 messages.length 而不是整個 messages 陣列
-  
-  // 初始載入時滾動到底部
-  useEffect(() => {
-    if (messages.length > 0 && lastMessageCountRef.current === 0) {
-      setTimeout(() => scrollToBottom(false), 200)
-    }
-  }, [messages.length, scrollToBottom])
-  
+  }, [messages.length])
+
+  // 初始載入時不自動滾動到底部 - 已停用
+  // useEffect(() => {
+  //   if (messages.length > 0 && lastMessageCountRef.current === 0) {
+  //     setTimeout(() => scrollToBottom(false), 200)
+  //   }
+  // }, [messages.length, scrollToBottom])
+
   // 清理函數
   useEffect(() => {
     return () => {
@@ -175,21 +165,21 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
       }
     }
   }, [])
-  
+
   // 空狀態
   const EmptyState = () => (
     <div className="flex flex-col items-center justify-center py-12 text-gray-500 animate-fadeInUp">
       <div className="w-16 h-16 mb-4 rounded-full bg-gray-100 flex items-center justify-center">
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.13 8.13 0 01-2.939-.543l-3.718 1.239a.75.75 0 01-.935-.935l1.239-3.718A8.13 8.13 0 014 12C4 7.582 7.582 4 12 4s8 3.582 8 8z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.13 8.13 0 01-2.939-.543l-3.718 1.239a.75.75 0 01-.935-.935l1.239-3.718A8.13 8.13 0 014 12C4 7.582 7.582 4 12 4s8 3.582 8 8z" />
         </svg>
       </div>
       <p className="text-lg font-medium mb-2">尚無廣播訊息</p>
       <p className="text-sm">等待玩家發送廣播訊息...</p>
     </div>
   )
-  
+
   // 載入更多指示器
   const LoadMoreIndicator = () => (
     <div className="py-4 animate-slideDown">
@@ -207,20 +197,20 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
               <IndeterminateProgressBar size="sm" />
             </div>
           )}
-          
+
           {/* 載入訊息 */}
           <div className="flex items-center justify-center">
-            <LoadingSpinner 
-              size="sm" 
-              text="載入歷史訊息..." 
+            <LoadingSpinner
+              size="sm"
+              text="載入歷史訊息..."
               className="text-gray-500"
             />
           </div>
         </div>
       ) : hasMoreHistory ? (
         <div className="flex items-center justify-center animate-scaleIn">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={handleManualLoadMore}
             className="text-blue-600 hover:text-blue-800 transition-colors duration-200"
@@ -241,7 +231,7 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
       )}
     </div>
   )
-  
+
   return (
     <div className={`flex flex-col relative ${className}`}>
       {/* 滾動到底部按鈕 */}
@@ -257,16 +247,16 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
           回到底部
         </Button>
       )}
-      
+
       {/* 載入遮罩 */}
       {loading && messages.length === 0 && (
         <div className="absolute inset-0 z-20 loading-overlay flex items-center justify-center">
           <LoadingSpinner size="lg" text="載入廣播訊息..." />
         </div>
       )}
-      
+
       {/* 訊息列表 */}
-      <div 
+      <div
         ref={listRef}
         className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
         style={{ maxHeight }}
@@ -277,12 +267,12 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
         {enableInfiniteScroll && messages.length > 0 && (
           <div ref={loadMoreRef} className="h-1" />
         )}
-        
+
         {/* 頂部載入指示器 */}
         {messages.length > 0 && (hasMoreHistory || loading || isFetching || loadError) && (
           <LoadMoreIndicator />
         )}
-        
+
         {/* 主要內容 */}
         {loading && messages.length === 0 ? (
           <MessageSkeleton count={5} />
@@ -294,7 +284,7 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
               <div
                 key={`${message.id}-${message.timestamp}`}
                 className={`${message.isNew ? 'animate-slideInFromTop' : 'animate-fadeInUp'}`}
-                style={{ 
+                style={{
                   animationDelay: message.isNew ? '0ms' : `${index * 50}ms`,
                   animationFillMode: 'both'
                 }}
@@ -302,62 +292,15 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
                 <MessageItem
                   message={message}
                   onClick={onMessageClick}
+                  onSwitchToFavorites={onSwitchToFavorites}
                   isFirst={index === 0}
                   isLast={index === messages.length - 1}
+                  searchTerm={searchTerm}
                 />
               </div>
             ))}
           </div>
         )}
-      </div>
-      
-      {/* 底部狀態欄 */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-t text-sm text-gray-500">
-        <div className="flex items-center space-x-4">
-          <span className="flex items-center space-x-1">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2-2z" />
-            </svg>
-            <span>共 {messages.length} 筆訊息</span>
-          </span>
-          {hasMoreHistory && (
-            <span className="text-blue-600 flex items-center space-x-1">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12l4-4m-4 4l4 4" />
-              </svg>
-              <span>還有更多歷史訊息</span>
-            </span>
-          )}
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          {scrollPosition > 100 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => scrollToTop(true)}
-              className="h-6 text-xs hover:bg-gray-200 transition-colors duration-200"
-            >
-              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-              </svg>
-              回到頂部
-            </Button>
-          )}
-          {autoScroll && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => scrollToBottom(true)}
-              className="h-6 text-xs hover:bg-gray-200 transition-colors duration-200"
-            >
-              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-              </svg>
-              滾動到底部
-            </Button>
-          )}
-        </div>
       </div>
     </div>
   )

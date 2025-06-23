@@ -104,7 +104,7 @@ const TimeAgo = ({ timestamp }: { timestamp: string }) => {
 }
 
 // 玩家複製按鈕組件
-const PlayerCopyButton = ({ playerName, playerId }: { playerName: string; playerId?: string }) => {
+const PlayerCopyButton = ({ playerName, playerId, onSwitchToFavorites }: { playerName: string; playerId?: string; onSwitchToFavorites: () => void }) => {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
@@ -120,7 +120,10 @@ const PlayerCopyButton = ({ playerName, playerId }: { playerName: string; player
 
   return (
     <button
-      onClick={handleCopy}
+      onClick={() => {
+        handleCopy()
+        onSwitchToFavorites()
+      }}
       className="inline-flex items-center justify-center w-4 h-4 ml-1 text-muted-foreground hover:text-foreground transition-colors"
       title={`複製 ${playerId ? `${playerName}#${playerId}` : playerName}`}
     >
@@ -724,9 +727,7 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
               {isLoadingLatest ? "載入中..." : "測試載入"}
             </Button> */}
 
-            <Button variant="ghost" size="sm" onClick={clearMessages}>
-              清除訊息
-            </Button>
+            {/* 清除訊息按鈕已移除 */}
           </div>
         </div>
 
@@ -780,6 +781,7 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
                             <PlayerCopyButton
                               playerName={broadcast.player_name}
                               playerId={broadcast.player_id}
+                              onSwitchToFavorites={() => setMessageTypeFilter("favorites")}
                             />
                           </div>
                           <div className="flex items-center text-sm text-muted-foreground">
@@ -818,8 +820,10 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
               hasMoreHistory={false}
               onLoadMore={handleLoadMore}
               onMessageClick={handleMessageClick}
+              onSwitchToFavorites={() => setMessageTypeFilter("favorites")}
+              searchTerm={debouncedSearchTerm}
               maxHeight="700px"
-              autoScroll={!debouncedSearchTerm && messageTypeFilter === "all"}
+              autoScroll={false}
               pageSize={50}
               enableInfiniteScroll={false}
             />
