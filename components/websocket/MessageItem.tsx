@@ -55,10 +55,80 @@ const PlayerCopyButton = ({
   )
 }
 
+// 訊息收藏按鈕組件
+export const MessageFavoriteButton = ({
+  message,
+  onFavoriteChange
+}: {
+  message: ExtendedBroadcastMessage
+  onFavoriteChange?: (isAdding?: boolean) => void
+}) => {
+  const [isFavorited, setIsFavorited] = useState(false)
+
+  // 檢查收藏狀態
+  React.useEffect(() => {
+    const favorites = JSON.parse(localStorage.getItem("broadcast-favorites") || "[]")
+    setIsFavorited(favorites.some((fav: any) => fav.id === message.id))
+  }, [message.id])
+
+  const handleFavorite = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      const favorites = JSON.parse(localStorage.getItem("broadcast-favorites") || "[]")
+
+      if (isFavorited) {
+        const newFavorites = favorites.filter((fav: any) => fav.id !== message.id)
+        localStorage.setItem("broadcast-favorites", JSON.stringify(newFavorites))
+        setIsFavorited(false)
+        // 呼叫回調函數通知父組件（移除收藏）
+        if (onFavoriteChange) {
+          onFavoriteChange(false)
+        }
+      } else {
+        const favoriteItem = {
+          ...message,
+          favorited_at: new Date().toISOString(),
+        }
+        favorites.push(favoriteItem)
+        localStorage.setItem("broadcast-favorites", JSON.stringify(favorites))
+        setIsFavorited(true)
+        // 呼叫回調函數通知父組件（新增收藏）
+        if (onFavoriteChange) {
+          onFavoriteChange(true)
+        }
+      }
+    } catch (err) {
+      console.error("收藏操作失敗:", err)
+    }
+  }
+
+  return (
+    <button
+      onClick={handleFavorite}
+      className={`inline-flex items-center justify-center w-4 h-4 transition-colors ${isFavorited
+        ? "text-blue-500 hover:text-blue-600"
+        : "text-muted-foreground hover:text-blue-500"
+        }`}
+      title={isFavorited ? "取消收藏" : "收藏此訊息"}
+    >
+      <svg
+        className="w-3 h-3"
+        fill={isFavorited ? "currentColor" : "none"}
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+      </svg>
+    </button>
+  )
+}
+
 interface MessageItemProps {
   message: ExtendedBroadcastMessage
   onClick?: (message: ExtendedBroadcastMessage) => void
   onSwitchToFavorites?: () => void
+  onFavoriteChange?: (isAdding?: boolean) => void
   searchTerm?: string
   isFirst?: boolean
   isLast?: boolean
@@ -71,6 +141,7 @@ export const MessageItem = memo<MessageItemProps>(({
   message,
   onClick,
   onSwitchToFavorites,
+  onFavoriteChange,
   searchTerm = "",
   isFirst = false,
   isLast = false,
@@ -264,6 +335,11 @@ export const MessageItem = memo<MessageItemProps>(({
               頻道: {message.channel}
             </div>
           )}
+        </div>
+
+        {/* 收藏按鈕 */}
+        <div className="flex items-center space-x-2">
+          <MessageFavoriteButton message={message} onFavoriteChange={onFavoriteChange} />
         </div>
       </div>
     </div>

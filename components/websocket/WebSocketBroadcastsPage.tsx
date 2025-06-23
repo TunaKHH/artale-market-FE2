@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useSearchDebounce } from "@/hooks/useDebounce"
 import { useWebSocketBroadcasts } from "@/hooks/useWebSocketBroadcasts"
 import { InfiniteMessageList } from "./InfiniteMessageList"
+import { MessageItem, MessageFavoriteButton } from "./MessageItem"
 import { ConnectionStatus } from "./ConnectionStatus"
 import { WebSocketErrorBoundary } from "./ErrorBoundary"
 import { WebSocketToast } from "./WebSocketToast"
@@ -133,63 +134,7 @@ const PlayerCopyButton = ({ playerName, playerId, onSwitchToFavorites }: { playe
 }
 
 // 收藏按鈕組件
-const FavoriteButton = ({
-  broadcast,
-  onFavoriteChange,
-}: {
-  broadcast: ExtendedBroadcastMessage
-  onFavoriteChange?: () => void
-}) => {
-  const [isFavorited, setIsFavorited] = useState(false)
 
-  useEffect(() => {
-    const favorites = JSON.parse(localStorage.getItem("broadcast-favorites") || "[]")
-    setIsFavorited(favorites.some((fav: any) => fav.id === broadcast.id))
-  }, [broadcast.id])
-
-  const handleFavorite = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-
-    try {
-      const favorites = JSON.parse(localStorage.getItem("broadcast-favorites") || "[]")
-
-      if (isFavorited) {
-        const newFavorites = favorites.filter((fav: any) => fav.id !== broadcast.id)
-        localStorage.setItem("broadcast-favorites", JSON.stringify(newFavorites))
-        setIsFavorited(false)
-        console.log("🔖 已取消收藏:", broadcast.player_name, broadcast.content.slice(0, 30) + "...")
-      } else {
-        const favoriteItem = {
-          ...broadcast,
-          favorited_at: new Date().toISOString(),
-        }
-        favorites.push(favoriteItem)
-        localStorage.setItem("broadcast-favorites", JSON.stringify(favorites))
-        setIsFavorited(true)
-        console.log("📖 已收藏:", broadcast.player_name, broadcast.content.slice(0, 30) + "...")
-      }
-
-      if (onFavoriteChange) {
-        onFavoriteChange()
-      }
-    } catch (err) {
-      console.error("收藏操作失敗:", err)
-    }
-  }
-
-  return (
-    <button
-      onClick={handleFavorite}
-      className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-all duration-200 hover:scale-105 ${isFavorited
-        ? "text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900 dark:text-blue-400"
-        : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
-        }`}
-      title={isFavorited ? "取消收藏" : "收藏此訊息"}
-    >
-      <Bookmark className={`w-4 h-4 ${isFavorited ? "fill-current" : ""}`} />
-    </button>
-  )
-}
 
 const getBadgeColor = (type: string) => {
   switch (type) {
@@ -471,8 +416,9 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
   )
 
   // 處理收藏狀態改變
-  const handleFavoriteChange = () => {
+  const handleFavoriteChange = (isAdding?: boolean) => {
     updateFavoriteCount()
+    // 移除自動跳轉邏輯，讓用戶手動選擇何時查看收藏
   }
 
   // 取得廣播類型選項
@@ -802,8 +748,8 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
                         />
                       </div>
                       <div className="flex-shrink-0">
-                        <FavoriteButton
-                          broadcast={broadcast}
+                        <MessageFavoriteButton
+                          message={broadcast}
                           onFavoriteChange={handleFavoriteChange}
                         />
                       </div>
@@ -821,6 +767,7 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
               onLoadMore={handleLoadMore}
               onMessageClick={handleMessageClick}
               onSwitchToFavorites={() => setMessageTypeFilter("favorites")}
+              onFavoriteChange={handleFavoriteChange}
               searchTerm={debouncedSearchTerm}
               maxHeight="700px"
               autoScroll={false}

@@ -22,6 +22,7 @@ interface InfiniteMessageListProps {
   onLoadMore: () => Promise<ExtendedBroadcastMessage[]>
   onMessageClick?: (message: ExtendedBroadcastMessage) => void
   onSwitchToFavorites?: () => void
+  onFavoriteChange?: (isAdding?: boolean) => void
   searchTerm?: string
   className?: string
   autoScroll?: boolean
@@ -37,6 +38,7 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
   onLoadMore,
   onMessageClick,
   onSwitchToFavorites,
+  onFavoriteChange,
   searchTerm = "",
   className = "",
   autoScroll = true,
@@ -293,6 +295,7 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
                   message={message}
                   onClick={onMessageClick}
                   onSwitchToFavorites={onSwitchToFavorites}
+                  onFavoriteChange={onFavoriteChange}
                   isFirst={index === 0}
                   isLast={index === messages.length - 1}
                   searchTerm={searchTerm}

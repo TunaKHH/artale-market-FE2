@@ -120,20 +120,34 @@ export function useWebSocketBroadcasts({
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
+    // 解析 API URL 以獲取基本域名
+    let baseUrl: string
+    try {
+      const url = new URL(apiUrl)
+      // 移除路徑部分，只保留協議和域名
+      baseUrl = `${url.protocol}//${url.host}`
+    } catch (error) {
+      // 如果 URL 解析失敗，使用原始邏輯
+      console.warn("API URL 解析失敗，使用原始邏輯:", apiUrl)
+      baseUrl = apiUrl
+    }
+
     // 將 HTTP(S) URL 轉換為 WebSocket URL
     let wsUrl: string
-    if (apiUrl.startsWith('http://')) {
-      wsUrl = apiUrl.replace('http://', 'ws://')
-    } else if (apiUrl.startsWith('https://')) {
-      wsUrl = apiUrl.replace('https://', 'wss://')
+    if (baseUrl.startsWith('http://')) {
+      wsUrl = baseUrl.replace('http://', 'ws://')
+    } else if (baseUrl.startsWith('https://')) {
+      wsUrl = baseUrl.replace('https://', 'wss://')
     } else {
       // 假設是域名，使用當前協議
-      wsUrl = `${protocol}//${apiUrl}`
+      wsUrl = `${protocol}//${baseUrl}`
     }
 
     // 確保 URL 格式正確
     const finalUrl = `${wsUrl}/ws/broadcasts`
     console.log("🔗 建構的 WebSocket URL:", finalUrl)
+    console.log("🔧 原始 API URL:", apiUrl)
+    console.log("🔧 解析的基本 URL:", baseUrl)
     return finalUrl
   }, [])
 
