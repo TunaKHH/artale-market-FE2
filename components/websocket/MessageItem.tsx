@@ -3,6 +3,7 @@
 import React, { memo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Copy, Check } from "lucide-react"
 import type { BroadcastMessage } from "@/lib/api"
 
 // 擴展訊息類型
@@ -48,8 +49,8 @@ const MessageFavoriteButton = ({ message }: { message: ExtendedBroadcastMessage 
     <button
       onClick={handleFavorite}
       className={`inline-flex items-center justify-center w-4 h-4 transition-colors ${isFavorited
-          ? "text-blue-500 hover:text-blue-600"
-          : "text-muted-foreground hover:text-blue-500"
+        ? "text-blue-500 hover:text-blue-600"
+        : "text-muted-foreground hover:text-blue-500"
         }`}
       title={isFavorited ? "取消收藏" : "收藏此訊息"}
     >
@@ -62,6 +63,33 @@ const MessageFavoriteButton = ({ message }: { message: ExtendedBroadcastMessage 
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
           d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
       </svg>
+    </button>
+  )
+}
+
+// 玩家複製按鈕組件
+const PlayerCopyButton = ({ playerName, playerId }: { playerName: string; playerId?: string }) => {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      const textToCopy = playerId ? `${playerName}#${playerId}` : playerName
+      await navigator.clipboard.writeText(textToCopy)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error("複製失敗:", err)
+    }
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="inline-flex items-center justify-center w-4 h-4 text-muted-foreground hover:text-foreground transition-colors"
+      title={`複製 ${playerId ? `${playerName}#${playerId}` : playerName}`}
+    >
+      {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
     </button>
   )
 }
@@ -224,6 +252,10 @@ export const MessageItem = memo<MessageItemProps>(({
                 >
                   {message.player_id ? `${message.player_name}#${message.player_id}` : message.player_name}
                 </Button>
+                <PlayerCopyButton
+                  playerName={message.player_name}
+                  playerId={message.player_id}
+                />
                 <MessageFavoriteButton
                   message={message}
                 />
