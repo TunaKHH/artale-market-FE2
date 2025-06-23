@@ -248,11 +248,18 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
 
     // 按搜尋關鍵字篩選 (使用防抖後的搜尋詞)
     if (debouncedSearchTerm.trim()) {
-      const searchLower = debouncedSearchTerm.toLowerCase()
-      filtered = filtered.filter(msg =>
-        msg.content.toLowerCase().includes(searchLower) ||
-        msg.player_name.toLowerCase().includes(searchLower)
-      )
+      // 將搜尋詞按空白分割成多個關鍵字
+      const searchKeywords = debouncedSearchTerm.trim().toLowerCase().split(/\s+/).filter(keyword => keyword.length > 0)
+
+      filtered = filtered.filter(msg => {
+        const contentLower = msg.content.toLowerCase()
+        const playerNameLower = msg.player_name.toLowerCase()
+
+        // 所有關鍵字都必須在內容或玩家名稱中找到 (AND 邏輯)
+        return searchKeywords.every(keyword =>
+          contentLower.includes(keyword) || playerNameLower.includes(keyword)
+        )
+      })
     }
 
     return filtered
@@ -533,13 +540,13 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
 
           {/* 搜尋功能 */}
           {messageTypeFilter !== "favorites" && (
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="mb-6">
               <div className="relative flex items-center space-x-2">
-                <Search className="w-4 h-4 text-muted-foreground" />
-                <div className="relative">
+                <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <div className="relative flex-1">
                   <Input
-                    placeholder="即時搜尋玩家或訊息內容..."
-                    className="max-w-md pr-8"
+                    placeholder="即時搜尋玩家或訊息內容... (可用空白分隔多個關鍵字)"
+                    className="w-full pr-8"
                     value={searchInput}
                     onChange={(e) => handleInputChange(e.target.value)}
                     onKeyDown={handleKeyDown}
@@ -607,7 +614,12 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
         {debouncedSearchTerm.trim() && (
           <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              搜尋「<span className="font-semibold">{debouncedSearchTerm}</span>」找到 {filteredMessages.length} 條結果
+              {(() => {
+                const keywords = debouncedSearchTerm.trim().split(/\s+/).filter(k => k.length > 0)
+                return keywords.length > 1
+                  ? <>搜尋包含所有關鍵字「<span className="font-semibold">{keywords.join('、')}</span>」的訊息，找到 {filteredMessages.length} 條結果</>
+                  : <>搜尋「<span className="font-semibold">{debouncedSearchTerm}</span>」找到 {filteredMessages.length} 條結果</>
+              })()}
               {messageTypeFilter !== "all" && messageTypeFilter !== "favorites" && (
                 <span> (僅顯示「{getBadgeText(messageTypeFilter)}」類型)</span>
               )}
