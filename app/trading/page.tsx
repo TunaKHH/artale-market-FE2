@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Link from "next/link"
 import { Header } from "../components/header"
 import { useAnalytics } from "@/hooks/useAnalytics"
+import { useRouter, useSearchParams } from "next/navigation"
 
 // Mock data for demonstration
 const mockItems = [
@@ -104,45 +105,14 @@ export default function TradingPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [showOffers, setShowOffers] = useState("25")
   const [pageStartTime] = useState(Date.now())
-  
+
+  // Next.js router hooks
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
   const analytics = useAnalytics()
 
-  // 頁面瀏覽追蹤
-  useEffect(() => {
-    analytics.trackPageView('trading', {
-      total_items: mockItems.length,
-      total_offers: totalOffers,
-      total_players: totalPlayers
-    })
-    
-    // 頁面離開時追蹤停留時間
-    const handleBeforeUnload = () => {
-      const timeSpent = Math.floor((Date.now() - pageStartTime) / 1000)
-      analytics.trackTimeSpent('trading', timeSpent)
-    }
-    
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [analytics, pageStartTime])
-
-  // 搜尋追蹤
-  useEffect(() => {
-    if (searchQuery) {
-      const timer = setTimeout(() => {
-        analytics.trackSearch(searchQuery, 'item', filteredItems.length)
-      }, 500) // 防抖動，避免每個按鍵都發送事件
-      
-      return () => clearTimeout(timer)
-    }
-  }, [searchQuery, filteredItems.length, analytics])
-
-  // 分類篩選追蹤
-  useEffect(() => {
-    if (selectedCategory !== "all") {
-      analytics.trackFilter('category', selectedCategory)
-    }
-  }, [selectedCategory, analytics])
-
+  // 計算數據（移到 useEffect 之前避免 linter 錯誤）
   const filteredItems = mockItems
     .filter((item) => {
       const matchesCategory = selectedCategory === "all" || item.category === selectedCategory
@@ -153,6 +123,72 @@ export default function TradingPage() {
 
   const totalOffers = mockItems.reduce((sum, item) => sum + item.sellOffers + item.buyOffers, 0)
   const totalPlayers = 76
+
+  // 更新 URL 搜尋參數
+  const updateUrlSearchParam = (searchTerm: string) => {
+    const currentUrl = new URL(window.location.href)
+
+    if (searchTerm.trim()) {
+      currentUrl.searchParams.set('q', searchTerm.trim())
+    } else {
+      currentUrl.searchParams.delete('q')
+    }
+
+    // 使用 replace 而不是 push，避免在搜尋時建立過多的歷史記錄
+    router.replace(currentUrl.pathname + currentUrl.search, { scroll: false })
+  }
+
+  // 客戶端掛載時從 URL 參數讀取搜尋內容
+  useEffect(() => {
+    const queryParam = searchParams.get('q')
+    if (queryParam) {
+      setSearchQuery(queryParam)
+    }
+  }, [searchParams])
+
+  // 頁面瀏覽追蹤
+  useEffect(() => {
+    const queryParam = searchParams.get('q')
+    analytics.trackPageView('trading', {
+      total_items: mockItems.length,
+      total_offers: totalOffers,
+      total_players: totalPlayers,
+      initial_search_query: queryParam || '',
+    })
+
+    // 頁面離開時追蹤停留時間
+    const handleBeforeUnload = () => {
+      const timeSpent = Math.floor((Date.now() - pageStartTime) / 1000)
+      analytics.trackTimeSpent('trading', timeSpent)
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [analytics, pageStartTime, searchParams])
+
+  // 搜尋追蹤
+  useEffect(() => {
+    if (searchQuery) {
+      const timer = setTimeout(() => {
+        analytics.trackSearch(searchQuery, 'item', filteredItems.length)
+        analytics.trackAction("search", "feature_usage", {
+          search_length: searchQuery.length,
+          search_type: "client_side",
+          has_url_param: true,
+          result_count: filteredItems.length,
+        })
+      }, 500) // 防抖動，避免每個按鍵都發送事件
+
+      return () => clearTimeout(timer)
+    }
+  }, [searchQuery, filteredItems.length, analytics])
+
+  // 分類篩選追蹤
+  useEffect(() => {
+    if (selectedCategory !== "all") {
+      analytics.trackFilter('category', selectedCategory)
+    }
+  }, [selectedCategory, analytics])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -182,9 +218,9 @@ export default function TradingPage() {
             <span>每個物品顯示</span>
             <Select value={showOffers} onValueChange={(value) => {
               setShowOffers(value)
-              analytics.trackAction('offers_per_page_change', 'trading', { 
+              analytics.trackAction('offers_per_page_change', 'trading', {
                 offers_count: value,
-                previous_count: showOffers 
+                previous_count: showOffers
               })
             }}>
               <SelectTrigger className="w-24">
@@ -207,7 +243,11 @@ export default function TradingPage() {
               placeholder="搜尋物品..."
               className="max-w-md"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value
+                setSearchQuery(value)
+                updateUrlSearchParam(value)
+              }}
             />
           </div>
         </div>
@@ -226,8 +266,8 @@ export default function TradingPage() {
         {/* Items Grid */}
         <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-16 gap-2">
           {filteredItems.map((item) => (
-            <Link 
-              key={item.id} 
+            <Link
+              key={item.id}
               href={`/offers-to/sell/${item.id}`}
               onClick={() => {
                 analytics.trackAction('item_click', 'trading', {

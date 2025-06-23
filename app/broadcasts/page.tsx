@@ -16,6 +16,7 @@ import { HighlightText } from "@/components/HighlightText"
 import { useBroadcasts } from "@/hooks/useBroadcasts"
 import { useAnalytics } from "@/hooks/useAnalytics"
 import { isTestEnvironment } from "@/lib/mock-data"
+import { useRouter, useSearchParams } from "next/navigation"
 
 // 時間格式化組件 - 避免 hydration 錯誤
 const TimeAgo = ({ timestamp }: { timestamp: string }) => {
@@ -183,11 +184,10 @@ const FavoriteButton = ({
   return (
     <button
       onClick={handleFavorite}
-      className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-all duration-200 hover:scale-105 ${
-        isFavorited
-          ? "text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900 dark:text-blue-400"
-          : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
-      }`}
+      className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-all duration-200 hover:scale-105 ${isFavorited
+        ? "text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900 dark:text-blue-400"
+        : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+        }`}
       title={isFavorited ? "取消收藏" : "收藏此訊息"}
     >
       <Bookmark className={`w-4 h-4 ${isFavorited ? "fill-current" : ""}`} />
@@ -256,6 +256,10 @@ export default function BroadcastsPage() {
   const [showSearchHistory, setShowSearchHistory] = useState(false)
   const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(-1)
 
+  // Next.js router hooks
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
   // 分析追蹤
   const analytics = useAnalytics()
 
@@ -264,15 +268,23 @@ export default function BroadcastsPage() {
     setMounted(true)
     setShowTestMode(isTestEnvironment())
     updateFavoriteCount()
-    loadSearchHistory() // 添加這行
+    loadSearchHistory()
     setPageStartTime(Date.now())
+
+    // 從 URL 參數讀取搜尋內容
+    const queryParam = searchParams.get('q')
+    if (queryParam) {
+      setSearchInput(queryParam)
+      updateFilters({ keyword: queryParam })
+    }
 
     // 追蹤頁面瀏覽
     analytics.trackPageView("broadcasts", {
       test_mode: isTestEnvironment(),
       auto_refresh: true,
+      initial_search_query: queryParam || '',
     })
-  }, [])
+  }, [searchParams])
 
   // 追蹤頁面停留時間
   useEffect(() => {
@@ -318,6 +330,20 @@ export default function BroadcastsPage() {
     }
   }
 
+  // 更新 URL 搜尋參數
+  const updateUrlSearchParam = (searchTerm: string) => {
+    const currentUrl = new URL(window.location.href)
+
+    if (searchTerm.trim()) {
+      currentUrl.searchParams.set('q', searchTerm.trim())
+    } else {
+      currentUrl.searchParams.delete('q')
+    }
+
+    // 使用 replace 而不是 push，避免在搜尋時建立過多的歷史記錄
+    router.replace(currentUrl.pathname + currentUrl.search, { scroll: false })
+  }
+
   // 清除搜尋歷史
   const clearSearchHistory = () => {
     localStorage.removeItem("search-history")
@@ -333,12 +359,14 @@ export default function BroadcastsPage() {
   const useHistorySearch = (term: string) => {
     setSearchInput(term)
     updateFilters({ keyword: term })
+    updateUrlSearchParam(term)
     setShowSearchHistory(false)
     setSelectedHistoryIndex(-1)
 
     analytics.trackAction("use_search_history", "user_behavior", {
       search_term: term,
       history_position: searchHistory.indexOf(term),
+      has_url_param: true,
     })
   }
 
@@ -366,11 +394,13 @@ export default function BroadcastsPage() {
   const clearSearch = useCallback(() => {
     setSearchInput("")
     updateFilters({ keyword: "" })
+    updateUrlSearchParam("")
     setShowSearchHistory(false)
     setSelectedHistoryIndex(-1)
     analytics.trackAction("clear_search", "search", {
       previous_keyword: filters.keyword,
       result_count: broadcasts.length,
+      has_url_param: true,
     })
   }, [analytics, filters.keyword, broadcasts.length, updateFilters])
 
@@ -379,6 +409,8 @@ export default function BroadcastsPage() {
     setSearchInput(value)
     // 即時更新篩選條件
     updateFilters({ keyword: value })
+    // 更新 URL 參數
+    updateUrlSearchParam(value)
 
     // 追蹤搜尋行為（防抖動）
     if (value.trim()) {
@@ -389,6 +421,7 @@ export default function BroadcastsPage() {
           has_filters: filters.messageType !== "all",
           current_message_type: filters.messageType,
           search_type: "client_side",
+          has_url_param: true,
         })
       }, 500)
 
@@ -656,17 +689,15 @@ export default function BroadcastsPage() {
                         <button
                           key={index}
                           onClick={() => useHistorySearch(term)}
-                          className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between group ${
-                            index === selectedHistoryIndex ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-                          }`}
+                          className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between group ${index === selectedHistoryIndex ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                            }`}
                         >
                           <span className="truncate">{term}</span>
                           <Search
-                            className={`w-3 h-3 transition-opacity ${
-                              index === selectedHistoryIndex
-                                ? "text-primary-foreground opacity-100"
-                                : "text-muted-foreground opacity-0 group-hover:opacity-100"
-                            }`}
+                            className={`w-3 h-3 transition-opacity ${index === selectedHistoryIndex
+                              ? "text-primary-foreground opacity-100"
+                              : "text-muted-foreground opacity-0 group-hover:opacity-100"
+                              }`}
                           />
                         </button>
                       ))}
@@ -722,19 +753,16 @@ export default function BroadcastsPage() {
           {displayMessages.map((broadcast: any) => (
             <Card
               key={broadcast.id}
-              className={`transition-all duration-500 cursor-pointer ${
-                selectedBroadcastId === broadcast.id
-                  ? "shadow-lg border-primary bg-primary/5"
-                  : "hover:shadow-md hover:border-muted-foreground"
-              } ${
-                filters.messageType === "favorites"
+              className={`transition-all duration-500 cursor-pointer ${selectedBroadcastId === broadcast.id
+                ? "shadow-lg border-primary bg-primary/5"
+                : "hover:shadow-md hover:border-muted-foreground"
+                } ${filters.messageType === "favorites"
                   ? "border-blue-200 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-950/30"
                   : ""
-              } ${
-                broadcast.isNew
+                } ${broadcast.isNew
                   ? "border-green-400 bg-green-50/50 dark:border-green-600 dark:bg-green-950/30 shadow-md animate-in slide-in-from-top-2 duration-500"
                   : ""
-              }`}
+                }`}
               onClick={() => handleBroadcastClick(broadcast.id)}
             >
               <CardContent className="p-4">
@@ -752,9 +780,8 @@ export default function BroadcastsPage() {
                       )}
                       <Badge
                         variant={getBadgeColor(broadcast.message_type) as any}
-                        className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-sm ${
-                          filters.messageType === broadcast.message_type ? "ring-2 ring-primary ring-offset-1" : ""
-                        }`}
+                        className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-sm ${filters.messageType === broadcast.message_type ? "ring-2 ring-primary ring-offset-1" : ""
+                          }`}
                         onClick={(e) => handleBadgeClick(e, broadcast.message_type)}
                         title={`點擊篩選「${getBadgeText(broadcast.message_type)}」類型的訊息`}
                       >
@@ -765,9 +792,8 @@ export default function BroadcastsPage() {
                         <HighlightText
                           text={broadcast.player_name}
                           searchTerm={filters.keyword}
-                          className={`text-sm font-medium ${
-                            selectedBroadcastId === broadcast.id ? "text-primary" : "text-primary"
-                          } ${broadcast.isNew ? "text-green-700 dark:text-green-400" : ""}`}
+                          className={`text-sm font-medium ${selectedBroadcastId === broadcast.id ? "text-primary" : "text-primary"
+                            } ${broadcast.isNew ? "text-green-700 dark:text-green-400" : ""}`}
                         />
                         {broadcast.player_id && (
                           <span className="text-xs text-muted-foreground">#{broadcast.player_id}</span>
@@ -792,9 +818,8 @@ export default function BroadcastsPage() {
                     <HighlightText
                       text={broadcast.content}
                       searchTerm={filters.keyword}
-                      className={`mb-2 ${
-                        selectedBroadcastId === broadcast.id ? "text-foreground font-medium" : "text-foreground"
-                      } ${broadcast.isNew ? "text-green-800 dark:text-green-300 font-medium" : ""}`}
+                      className={`mb-2 ${selectedBroadcastId === broadcast.id ? "text-foreground font-medium" : "text-foreground"
+                        } ${broadcast.isNew ? "text-green-800 dark:text-green-300 font-medium" : ""}`}
                     />
                   </div>
                   <div className="flex-shrink-0">
