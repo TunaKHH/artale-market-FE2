@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useCallback, useEffect, useMemo } from "react"
-import { Clock, Search, AlertCircle, Copy, Check, X, TestTube, Bookmark } from "lucide-react"
+import { Clock, Search, AlertCircle, Copy, Check, X, Bookmark } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -175,7 +175,7 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
   const [showSearchHistory, setShowSearchHistory] = useState(false)
   const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(-1)
   const [mounted, setMounted] = useState(false)
-  const [isTestMode, setIsTestMode] = useState(false)
+
 
   // 防抖搜尋
   const { debouncedSearchTerm, isSearching } = useSearchDebounce(searchInput, 300)
@@ -210,19 +210,8 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
   useEffect(() => {
     setMounted(true)
 
-    // 安全檢查環境
+    // 初始化
     try {
-      const checkTestMode = () => {
-        if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_IS_PRODUCTION === "true") {
-          return false
-        }
-        if (typeof process !== "undefined" && process.env.NODE_ENV === "production") {
-          return false
-        }
-        return true
-      }
-
-      setIsTestMode(checkTestMode())
       updateFavoriteCount()
       loadSearchHistory()
 
@@ -233,7 +222,6 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
       }
     } catch (error) {
       console.error("初始化錯誤:", error)
-      setIsTestMode(false)
     }
   }, [searchParams])
 
@@ -479,12 +467,7 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <h1 className="text-3xl font-bold text-foreground">廣播訊息</h1>
-              {isTestMode && (
-                <Badge variant="outline" className="flex items-center space-x-1 text-orange-600 border-orange-300">
-                  <TestTube className="w-3 h-3" />
-                  <span>測試模式</span>
-                </Badge>
-              )}
+
             </div>
           </div>
 
@@ -497,9 +480,6 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
             ) : (
               <>
                 即時顯示遊戲內的廣播訊息，包括交易、組隊、公會招募等。
-                {isTestMode && (
-                  <span className="ml-2 text-orange-600">🧪 目前使用測試資料，API 連線失敗時會自動切換。</span>
-                )}
               </>
             )}
           </p>
@@ -531,9 +511,6 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 {error}
-                {isTestMode && (
-                  <div className="mt-2 text-sm">💡 由於您在測試環境中，系統已自動使用假資料繼續運作。</div>
-                )}
               </AlertDescription>
             </Alert>
           )}
@@ -675,15 +652,7 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
               </Button>
             )} */}
 
-            {/* 測試載入按鈕已隱藏 */}
-            {/* <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => loadLatestMessages(10)}
-              disabled={!isConnected || isLoadingLatest}
-            >
-              {isLoadingLatest ? "載入中..." : "測試載入"}
-            </Button> */}
+
 
             {/* 清除訊息按鈕已移除 */}
           </div>
@@ -702,11 +671,6 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
               ) : (
                 <>
                   <p className="text-muted-foreground">{error ? "無法載入廣播訊息" : "找不到符合條件的廣播訊息。"}</p>
-                  {isTestMode && error && (
-                    <p className="text-sm text-orange-600 mt-2">
-                      🧪 測試模式：如果看到此訊息，表示假資料生成可能有問題。
-                    </p>
-                  )}
                 </>
               )}
             </div>

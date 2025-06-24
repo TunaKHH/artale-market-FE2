@@ -145,9 +145,6 @@ export function useWebSocketBroadcasts({
 
     // 確保 URL 格式正確
     const finalUrl = `${wsUrl}/ws/broadcasts`
-    console.log("🔗 建構的 WebSocket URL:", finalUrl)
-    console.log("🔧 原始 API URL:", apiUrl)
-    console.log("🔧 解析的基本 URL:", baseUrl)
     return finalUrl
   }, [])
 
@@ -170,8 +167,6 @@ export function useWebSocketBroadcasts({
 
       const messageStr = JSON.stringify(request)
       wsRef.current.send(messageStr)
-      console.log("📤 WebSocket 發送訊息:", request.type, request)
-      console.log("📤 發送的 JSON:", messageStr)
     } catch (error) {
       console.error("WebSocket 發送訊息失敗:", error)
       setError("發送訊息失敗")
@@ -180,10 +175,8 @@ export function useWebSocketBroadcasts({
 
   // 處理 WebSocket 訊息
   const handleMessage = useCallback((event: MessageEvent) => {
-    console.log("🔍 handleMessage 被調用，原始資料:", event.data)
     try {
       const response: WebSocketResponse = JSON.parse(event.data)
-      console.log("📥 WebSocket 收到訊息:", response.type, response)
 
       // 處理請求回應
       if (response.request_id) {
@@ -198,7 +191,6 @@ export function useWebSocketBroadcasts({
       // 處理廣播訊息
       switch (response.type) {
         case "new_message":
-          console.log("🎉 收到新訊息廣播:", response.payload)
           if (response.payload) {
             const newMessage: ExtendedBroadcastMessage = {
               ...response.payload,
@@ -206,17 +198,13 @@ export function useWebSocketBroadcasts({
               newMessageTimestamp: Date.now()
             }
 
-            console.log("📝 處理新訊息:", newMessage.id, newMessage.player_name, newMessage.content.slice(0, 30) + "...")
-
             setMessages(prev => {
               // 檢查是否已存在相同訊息（去重）
               const exists = prev.some(msg => msg.id === newMessage.id)
               if (exists) {
-                console.log("⚠️ 訊息已存在，跳過:", newMessage.id)
                 return prev
               }
 
-              console.log("✅ 新增訊息到列表頂部:", newMessage.id)
               // 將新訊息加到頂部，限制總數量避免記憶體問題
               const updated = [newMessage, ...prev]
               return updated.slice(0, MAX_MESSAGES)
@@ -225,7 +213,7 @@ export function useWebSocketBroadcasts({
           break
 
         case "connection_info":
-          console.log("📊 WebSocket 連線資訊:", response.payload)
+          // console.log("📊 WebSocket 連線資訊:", response.payload)
           break
 
         case "error":
@@ -299,15 +287,11 @@ export function useWebSocketBroadcasts({
       isManualDisconnectRef.current = false
 
       const wsUrl = getWebSocketUrl()
-      console.log("🔌 WebSocket 嘗試連線:", wsUrl)
-      console.log("🔧 API URL:", process.env.NEXT_PUBLIC_API_URL)
-      console.log("🌐 當前域名:", window.location.hostname)
 
       const ws = new WebSocket(wsUrl)
       wsRef.current = ws
 
       ws.onopen = () => {
-        console.log("✅ WebSocket 連線成功")
         setConnectionState("connected")
         setConnectionAttempts(prev => prev + 1)
         reconnectAttemptsRef.current = 0
@@ -320,8 +304,6 @@ export function useWebSocketBroadcasts({
           subscribeToNewMessages()
         }
 
-        // 暫時不自動載入最新訊息，只依賴即時推送
-        console.log("✅ WebSocket 連線建立，等待即時推送訊息")
       }
 
       ws.onclose = (event) => {
@@ -395,7 +377,6 @@ export function useWebSocketBroadcasts({
     }, (response) => {
       if (response.type === "subscription_confirmed") {
         setIsSubscribed(true)
-        console.log("✅ 已訂閱新訊息推送")
       }
     })
   }, [sendMessage, generateRequestId])
