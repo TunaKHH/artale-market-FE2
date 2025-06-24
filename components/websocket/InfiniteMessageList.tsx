@@ -170,8 +170,8 @@ export const InfiniteMessageList = memo<InfiniteMessageListProps>(({
 
   // 空狀態
   const EmptyState = () => (
-    <div className="flex flex-col items-center justify-center py-12 text-gray-500 animate-fadeInUp">
-      <div className="w-16 h-16 mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+    <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400 animate-fadeInUp">
+      <div className="w-16 h-16 mb-4 rounded-full bg-gray-100 dark:bg-gray-800/30 flex items-center justify-center">
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
             d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.13 8.13 0 01-2.939-.543l-3.718 1.239a.75.75 0 01-.935-.935l1.239-3.718A8.13 8.13 0 014 12C4 7.582 7.582 4 12 4s8 3.582 8 8z" />

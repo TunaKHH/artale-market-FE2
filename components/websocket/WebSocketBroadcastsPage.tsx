@@ -589,7 +589,7 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
 
         {/* 搜尋結果提示 */}
         {debouncedSearchTerm.trim() && (
-          <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
             <p className="text-sm text-blue-800 dark:text-blue-200">
               {(() => {
                 const keywords = debouncedSearchTerm.trim().split(/\s+/).filter(k => k.length > 0)
@@ -680,9 +680,9 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
               {favoriteMessages.map((broadcast) => (
                 <Card
                   key={broadcast.id}
-                  className={`transition-all duration-500 cursor-pointer border-blue-200 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-950/30 ${selectedBroadcastId === broadcast.id
+                  className={`transition-all duration-500 cursor-pointer border-blue-200/50 bg-transparent dark:border-blue-800/50 ${selectedBroadcastId === broadcast.id
                     ? "shadow-lg border-primary bg-primary/5"
-                    : "hover:shadow-md hover:border-muted-foreground"
+                    : "hover:shadow-md hover:border-muted-foreground hover:bg-gray-50/50 dark:hover:bg-gray-800/20"
                     }`}
                   onClick={() => handleBroadcastClick(broadcast.id)}
                 >

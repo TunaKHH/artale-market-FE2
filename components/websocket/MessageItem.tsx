@@ -156,30 +156,30 @@ export const MessageItem = memo<MessageItemProps>(({
       case "buy":
         return {
           label: "收購",
-          color: "bg-blue-100 text-blue-800",
+          color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
           icon: "🛒",
-          borderColor: "border-blue-200"
+          borderColor: "border-blue-200 dark:border-blue-700/50"
         }
       case "sell":
         return {
           label: "販售",
-          color: "bg-green-100 text-green-800",
+          color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
           icon: "💰",
-          borderColor: "border-green-200"
+          borderColor: "border-green-200 dark:border-green-700/50"
         }
       case "team":
         return {
           label: "組隊",
-          color: "bg-purple-100 text-purple-800",
+          color: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
           icon: "👥",
-          borderColor: "border-purple-200"
+          borderColor: "border-purple-200 dark:border-purple-700/50"
         }
       default:
         return {
           label: "其他",
-          color: "bg-gray-100 text-gray-800",
+          color: "bg-gray-100 text-gray-800 dark:bg-gray-800/30 dark:text-gray-300",
           icon: "💬",
-          borderColor: "border-gray-200"
+          borderColor: "border-gray-200 dark:border-gray-700/50"
         }
     }
   }
@@ -245,10 +245,10 @@ export const MessageItem = memo<MessageItemProps>(({
       className={`
         group relative transition-all duration-200 ease-in-out
         ${message.isNew ? 'animate-slideInFromTop' : ''}
-        ${onClick ? 'cursor-pointer hover:bg-gray-50' : ''}
+        ${onClick ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50' : ''}
         ${compact ? 'py-2' : 'py-3'}
         px-4 rounded-lg border ${typeConfig.borderColor}
-        ${message.isNew ? 'bg-yellow-50 border-yellow-300 shadow-md' : 'bg-white hover:shadow-sm'}
+        ${message.isNew ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-600 shadow-md' : 'bg-transparent hover:shadow-sm'}
       `}
       onClick={handleMessageClick}
     >
@@ -319,7 +319,7 @@ export const MessageItem = memo<MessageItemProps>(({
 
           {/* 訊息內容 */}
           <div className={`
-            text-gray-900 break-words
+            text-gray-900 dark:text-gray-100 break-words
             ${compact ? 'text-sm' : 'text-base'}
             ${message.isNew ? 'font-medium' : ''}
           `}>
