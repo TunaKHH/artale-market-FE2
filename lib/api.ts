@@ -1,12 +1,4 @@
 // API 服務層 - 廣播訊息相關 API
-import {
-  generateMockBroadcasts,
-  filterMockBroadcasts,
-  paginateMockBroadcasts,
-  generateMockStats,
-  isTestEnvironment,
-  type MockBroadcastMessage,
-} from "./mock-data"
 import { emitConnectionChange } from "../hooks/useConnectionStatus"
 
 // 多端點配置 - 支援故障轉移
@@ -263,76 +255,7 @@ export interface BroadcastsResponse {
   has_prev: boolean
 }
 
-// 全域假資料快取
-let mockBroadcastsCache: MockBroadcastMessage[] | null = null
 
-// 取得或生成假資料
-const getMockBroadcasts = (): MockBroadcastMessage[] => {
-  if (!mockBroadcastsCache) {
-    console.log("🧪 [測試模式] 生成假資料...")
-    mockBroadcastsCache = generateMockBroadcasts(100) // 生成100筆假資料
-  }
-  return mockBroadcastsCache
-}
-
-// 使用假資料的廣播訊息 API
-const getMockBroadcastsResponse = ({
-  page = 1,
-  pageSize = 50,
-  messageType,
-  playerName,
-  keyword,
-}: {
-  page?: number
-  pageSize?: number
-  messageType?: string
-  playerName?: string
-  keyword?: string
-}): BroadcastsResponse => {
-  console.log("🧪 [假資料] 生成回應:", { page, pageSize, messageType, playerName, keyword })
-
-  const allMockBroadcasts = getMockBroadcasts()
-
-  // 應用篩選
-  const filteredBroadcasts = filterMockBroadcasts(allMockBroadcasts, {
-    messageType,
-    playerName,
-    keyword,
-  })
-
-  // 按時間排序（最新的在前面）
-  filteredBroadcasts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-
-  // 分頁
-  const result = paginateMockBroadcasts(filteredBroadcasts, page, Math.min(pageSize, 50))
-
-  console.log("🧪 [假資料] 回應結果:", {
-    總數: result.total,
-    當前頁: result.page,
-    訊息數量: result.messages.length,
-    有下一頁: result.has_next,
-  })
-
-  return result
-}
-
-// 檢查是否應該直接使用假資料
-const shouldDirectlyUseMockData = (): boolean => {
-  // 強制使用真實 API 進行測試
-  const forceUseRealApi = true
-  if (forceUseRealApi) {
-    console.log("🚀 [強制模式] 使用真實 API，跳過假資料")
-    return false
-  }
-
-  // 如果在測試環境且 API_BASE_URL 指向不存在的服務，直接使用假資料
-  const isTest = isTestEnvironment()
-  const hasInvalidApi = !API_BASE_URL
-
-  console.log("🔍 直接使用假資料檢查:", { isTest, hasInvalidApi, API_BASE_URL })
-
-  return isTest && hasInvalidApi
-}
 
 // 取得廣播訊息列表
 export async function getBroadcasts({
@@ -353,18 +276,6 @@ export async function getBroadcasts({
   hours?: number
 } = {}): Promise<BroadcastsResponse> {
   console.log("📡 [API] 開始請求廣播訊息:", { page, pageSize, messageType, playerName, keyword, initialLoad, hours })
-
-  // 檢查是否應該直接使用假資料
-  if (shouldDirectlyUseMockData()) {
-    console.log("🧪 [測試模式] 直接使用假資料，跳過 API 請求")
-    return getMockBroadcastsResponse({
-      page,
-      pageSize: Math.min(Math.max(pageSize, 1), 50),
-      messageType,
-      playerName,
-      keyword,
-    })
-  }
 
   // 首次載入時使用 5000（後端會忽略此值並返回全部），否則限制為500筆
   const limitedPageSize = initialLoad ? 5000 : Math.min(Math.max(pageSize, 1), 500)
@@ -420,24 +331,6 @@ export async function getBroadcasts({
     return result
   } catch (error) {
     console.error("❌ [API] 請求失敗:", error)
-
-    // 在測試環境下使用假資料
-    if (isTestEnvironment()) {
-      console.log("🧪 [測試模式] API 失敗，切換到假資料")
-
-      // 追蹤 API 失敗但使用假資料成功
-      trackApiCall("/broadcasts", false, keyword || messageType)
-
-      return getMockBroadcastsResponse({
-        page,
-        pageSize: limitedPageSize,
-        messageType,
-        playerName,
-        keyword,
-      })
-    }
-
-    // 非測試環境直接拋出錯誤
     throw error
   }
 }
@@ -445,13 +338,6 @@ export async function getBroadcasts({
 // 取得廣播統計資料
 export async function getBroadcastStats(hours = 24): Promise<BroadcastStats> {
   console.log("📊 [API] 開始請求統計資料")
-
-  // 檢查是否應該直接使用假資料
-  if (shouldDirectlyUseMockData()) {
-    console.log("🧪 [測試模式] 直接使用假統計資料")
-    const mockBroadcasts = getMockBroadcasts()
-    return generateMockStats(mockBroadcasts)
-  }
 
   try {
     const response = await fetchWithFailover(`/broadcasts/stats/?hours=${hours}`)
@@ -465,14 +351,6 @@ export async function getBroadcastStats(hours = 24): Promise<BroadcastStats> {
     return result
   } catch (error) {
     console.error("❌ [統計] 請求失敗:", error)
-
-    // 在測試環境下使用假資料
-    if (isTestEnvironment()) {
-      console.log("🧪 [測試模式] 統計 API 失敗，使用假資料")
-      const mockBroadcasts = getMockBroadcasts()
-      return generateMockStats(mockBroadcasts)
-    }
-
     throw error
   }
 }
@@ -481,17 +359,6 @@ export async function getBroadcastStats(hours = 24): Promise<BroadcastStats> {
 export async function getBroadcastById(messageId: number): Promise<BroadcastMessage> {
   console.log("📄 [API] 開始請求單一廣播:", messageId)
 
-  // 檢查是否應該直接使用假資料
-  if (shouldDirectlyUseMockData()) {
-    console.log("🧪 [測試模式] 直接使用假資料查找單一廣播")
-    const mockBroadcasts = getMockBroadcasts()
-    const broadcast = mockBroadcasts.find((b) => b.id === messageId)
-    if (broadcast) {
-      return broadcast
-    }
-    throw new Error("找不到指定的廣播訊息")
-  }
-
   try {
     const response = await fetchWithFailover(`/broadcasts/${messageId}`)
     const result = await handleApiResponse(response)
@@ -499,17 +366,6 @@ export async function getBroadcastById(messageId: number): Promise<BroadcastMess
     return result
   } catch (error) {
     console.error("❌ [單一廣播] 請求失敗:", error)
-
-    // 在測試環境下使用假資料
-    if (isTestEnvironment()) {
-      console.log("🧪 [測試模式] 單一廣播 API 失敗，使用假資料")
-      const mockBroadcasts = getMockBroadcasts()
-      const broadcast = mockBroadcasts.find((b) => b.id === messageId)
-      if (broadcast) {
-        return broadcast
-      }
-    }
-
     throw error
   }
 }
@@ -517,13 +373,6 @@ export async function getBroadcastById(messageId: number): Promise<BroadcastMess
 // 取得玩家廣播訊息
 export async function getPlayerBroadcasts(playerName: string, hours = 24): Promise<BroadcastMessage[]> {
   console.log("👤 [API] 開始請求玩家廣播:", playerName)
-
-  // 檢查是否應該直接使用假資料
-  if (shouldDirectlyUseMockData()) {
-    console.log("🧪 [測試模式] 直接使用假資料查找玩家廣播")
-    const mockBroadcasts = getMockBroadcasts()
-    return mockBroadcasts.filter((b) => b.player_name.toLowerCase().includes(playerName.toLowerCase()))
-  }
 
   const params = new URLSearchParams({
     hours: hours.toString(),
@@ -536,14 +385,6 @@ export async function getPlayerBroadcasts(playerName: string, hours = 24): Promi
     return result
   } catch (error) {
     console.error("❌ [玩家廣播] 請求失敗:", error)
-
-    // 在測試環境下使用假資料
-    if (isTestEnvironment()) {
-      console.log("🧪 [測試模式] 玩家廣播 API 失敗，使用假資料")
-      const mockBroadcasts = getMockBroadcasts()
-      return mockBroadcasts.filter((b) => b.player_name.toLowerCase().includes(playerName.toLowerCase()))
-    }
-
     throw error
   }
 }
