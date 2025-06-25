@@ -4,7 +4,7 @@ import React, { memo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Copy, Check } from "lucide-react"
-import { HighlightText } from "@/components/HighlightText"
+import { HighlightText } from "@/components/common"
 import type { BroadcastMessage } from "@/lib/api"
 
 // 擴展訊息類型

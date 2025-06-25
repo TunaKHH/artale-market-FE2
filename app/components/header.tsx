@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Menu, MessageSquare, Share2, Check, Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,8 +12,14 @@ import { useAnalytics } from "@/hooks/useAnalytics"
 export function Header() {
   const [searchQuery, setSearchQuery] = useState("")
   const [shareCopied, setShareCopied] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const { theme, setTheme } = useTheme()
   const analytics = useAnalytics()
+
+  // 防止 hydration 錯誤
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // 分享功能
   const handleShare = async () => {
@@ -21,7 +27,7 @@ export function Header() {
       page_url: window.location.href,
       method: 'button_click'
     })
-    
+
     const shareData = {
       title: "Artale Love - 楓之谷世界廣播監控",
       text: "來看看楓之谷世界的即時廣播訊息，包含交易、組隊、公會招募等資訊！",
@@ -99,8 +105,8 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center space-x-4">
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className="flex items-center space-x-2"
               onClick={() => {
                 analytics.trackAction('logo_click', 'header', {
@@ -114,8 +120,8 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link 
-              href="/broadcasts" 
+            <Link
+              href="/broadcasts"
               className="text-muted-foreground hover:text-primary font-medium transition-colors"
               onClick={() => {
                 analytics.trackAction('nav_click', 'header', {
@@ -136,9 +142,15 @@ export function Header() {
               variant="outline"
               size="sm"
               className="hidden md:flex"
-              title={theme === "dark" ? "切換到淺色模式" : "切換到深色模式"}
+              title={mounted ? (theme === "dark" ? "切換到淺色模式" : "切換到深色模式") : "主題切換"}
+              suppressHydrationWarning
             >
-              {theme === "dark" ? (
+              {!mounted ? (
+                <>
+                  <Moon className="w-4 h-4 mr-2" />
+                  主題
+                </>
+              ) : theme === "dark" ? (
                 <>
                   <Sun className="w-4 h-4 mr-2" />
                   淺色
@@ -157,9 +169,16 @@ export function Header() {
               variant="outline"
               size="icon"
               className="md:hidden"
-              title={theme === "dark" ? "切換到淺色模式" : "切換到深色模式"}
+              title={mounted ? (theme === "dark" ? "切換到淺色模式" : "切換到深色模式") : "主題切換"}
+              suppressHydrationWarning
             >
-              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {!mounted ? (
+                <Moon className="w-4 h-4" />
+              ) : theme === "dark" ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
             </Button>
 
             {/* 分享按鈕 - 桌面版 */}
@@ -216,9 +235,9 @@ export function Header() {
             {/* Mobile menu */}
             <Sheet>
               <SheetTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
+                <Button
+                  variant="outline"
+                  size="icon"
                   className="md:hidden"
                   onClick={() => {
                     analytics.trackAction('mobile_menu_open', 'header', {

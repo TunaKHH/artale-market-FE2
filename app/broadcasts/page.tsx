@@ -2,7 +2,7 @@
 
 import React from "react"
 import { Header } from "../components/header"
-import { WebSocketBroadcastsPage } from "@/components/websocket/WebSocketBroadcastsPage"
+import { WebSocketBroadcastsPage } from "@/components/feature/websocket"
 
 export default function BroadcastsPage() {
   return (

@@ -15,7 +15,7 @@ import { MessageItem, MessageFavoriteButton } from "./MessageItem"
 import { ConnectionStatus } from "./ConnectionStatus"
 import { WebSocketErrorBoundary } from "./ErrorBoundary"
 import { WebSocketToast } from "./WebSocketToast"
-import { HighlightText } from "@/components/HighlightText"
+import { HighlightText } from "@/components/common"
 import { useRouter, useSearchParams } from "next/navigation"
 import type { BroadcastMessage } from "@/lib/api"
 
@@ -505,15 +505,37 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
             </Alert>
           )}
 
-          {/* WebSocket 錯誤提示 */}
-          {error && messageTypeFilter !== "favorites" && (
+          {/* WebSocket 錯誤提示 - 已隱藏，讓用戶自己刷新 */}
+          {/* {error && messageTypeFilter !== "favorites" && (
             <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {error}
+              <AlertDescription className="flex items-center justify-between">
+                <div className="flex-1 pr-4">
+                  <div className="font-medium">WebSocket 連線錯誤</div>
+                  <div className="text-sm mt-1">{error}</div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    onClick={connect}
+                    size="sm"
+                    variant="outline"
+                    className="border-red-300 text-red-800 hover:bg-red-100"
+                  >
+                    重新連線
+                  </Button>
+                  <Button
+                    onClick={clearError}
+                    size="sm"
+                    variant="ghost"
+                    className="text-red-600 hover:bg-red-100"
+                    title="關閉錯誤訊息"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
               </AlertDescription>
             </Alert>
-          )}
+          )} */}
 
           {/* 搜尋功能 */}
           {messageTypeFilter !== "favorites" && (

@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import { InfiniteMessageList } from '@/components/websocket/InfiniteMessageList'
+import { InfiniteMessageList } from '@/components/feature/websocket'
 import type { BroadcastMessage } from '@/lib/api'
 
 // Mock hooks
@@ -15,9 +15,10 @@ jest.mock('@/hooks/useInfiniteScroll', () => ({
 }))
 
 // Mock 訊息項目組件
-jest.mock('@/components/websocket/MessageItem', () => ({
+jest.mock('@/components/feature/websocket', () => ({
+  ...jest.requireActual('@/components/feature/websocket'),
   MessageItem: ({ message, onClick }: any) => (
-    <div 
+    <div
       data-testid={`message-${message.id}`}
       onClick={() => onClick?.(message)}
       className={message.isNew ? 'new-message' : ''}
@@ -109,7 +110,7 @@ describe('InfiniteMessageList', () => {
     expect(screen.getByTestId('message-1')).toBeInTheDocument()
     expect(screen.getByTestId('message-2')).toBeInTheDocument()
     expect(screen.getByTestId('message-3')).toBeInTheDocument()
-    
+
     // 檢查新訊息標記
     expect(screen.getByTestId('message-3')).toHaveClass('new-message')
   })
@@ -155,7 +156,7 @@ describe('InfiniteMessageList', () => {
     )
 
     fireEvent.click(screen.getByText('載入更多歷史訊息'))
-    
+
     await waitFor(() => {
       expect(mockOnLoadMore).toHaveBeenCalled()
     })
