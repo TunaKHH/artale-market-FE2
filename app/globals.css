@@ -65,16 +65,16 @@
   }
 }
 
-/* 平滑的主題切換動畫 */
-* {
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+/* 🚀 性能優化：只保留關鍵動畫 */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* WebSocket 訊息動畫 */
 @keyframes slideInFromTop {
   from {
     opacity: 0;
-    transform: translateY(-20px);
+    transform: translateY(-10px);
   }
   to {
     opacity: 1;
@@ -82,83 +82,28 @@
   }
 }
 
-@keyframes slideInFromRight {
-  from {
-    opacity: 0;
-    transform: translateX(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 @keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
-@keyframes bounce {
-  0%, 20%, 53%, 80%, 100% {
-    transform: translate3d(0, 0, 0);
-  }
-  40%, 43% {
-    transform: translate3d(0, -5px, 0);
-  }
-  70% {
-    transform: translate3d(0, -3px, 0);
-  }
-  90% {
-    transform: translate3d(0, -1px, 0);
-  }
-}
-
-/* 自訂動畫類別 */
-.animate-slideInFromTop {
-  animation: slideInFromTop 0.3s ease-out;
-}
-
-.animate-slideInFromRight {
-  animation: slideInFromRight 0.3s ease-out;
-}
-
+/* 🚀 性能優化：簡化動畫類別 */
 .animate-fadeIn {
   animation: fadeIn 0.2s ease-in;
+}
+
+.animate-slideInFromTop {
+  animation: slideInFromTop 0.3s ease-out;
 }
 
 .animate-pulse-slow {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-.animate-bounce-soft {
-  animation: bounce 1s ease-in-out;
-}
-
-/* 滾動條樣式 */
+/* 🚀 性能優化：優化滾動條 */
 .scrollbar-thin {
   scrollbar-width: thin;
-}
-
-.scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
-  background-color: #d1d5db;
-  border-radius: 0.25rem;
-}
-
-.scrollbar-track-gray-100::-webkit-scrollbar-track {
-  background-color: #f3f4f6;
+  scrollbar-color: hsl(var(--muted)) transparent;
 }
 
 .scrollbar-thin::-webkit-scrollbar {
@@ -166,7 +111,16 @@
   height: 6px;
 }
 
-/* 連線狀態指示器 */
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted));
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 🚀 性能優化：連線狀態指示器 */
 .connection-indicator {
   position: relative;
 }
@@ -179,48 +133,42 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #ef4444; /* 預設為紅色（斷線） */
+  background-color: #ef4444;
 }
 
 .connection-indicator.connected::after {
-  background-color: #10b981; /* 綠色（已連線） */
+  background-color: #10b981;
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .connection-indicator.connecting::after {
-  background-color: #f59e0b; /* 黃色（連線中） */
+  background-color: #f59e0b;
   animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-.connection-indicator.error::after {
-  background-color: #ef4444; /* 紅色（錯誤） */
-  animation: pulse 0.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* 新訊息高亮效果 */
-.message-highlight {
-  position: relative;
-  overflow: hidden;
-}
-
-.message-highlight::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.2), transparent);
-  animation: shimmer 2s ease-in-out;
-}
-
-@keyframes shimmer {
-  0% {
-    left: -100%;
+/* 🚀 性能優化：移動端優化 */
+@media (max-width: 640px) {
+  .message-list {
+    padding: 0.5rem;
   }
-  100% {
-    left: 100%;
+
+  .message-item {
+    padding: 0.75rem;
   }
+
+  .mobile-hidden {
+    display: none;
+  }
+}
+
+/* 🚀 性能優化：減少不必要的過渡效果 */
+* {
+  transition: none;
+}
+
+/* 只在必要元素上使用過渡 */
+button, .btn, .transition {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 /* 載入動畫 */
@@ -326,20 +274,6 @@
 }
 
 /* 響應式設計 */
-@media (max-width: 640px) {
-  .message-list {
-    font-size: 0.875rem;
-  }
-  
-  .message-item {
-    padding: 0.5rem;
-  }
-  
-  .mobile-hidden {
-    display: none;
-  }
-}
-
 @media (max-width: 768px) {
   .tablet-hidden {
     display: none;
