@@ -1,12 +1,11 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
-import { Settings, Plus, Trash2, TestTube, Bell, BellOff } from 'lucide-react'
+import { Settings, Plus, Trash2, Bell, BellOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAutoFavoriteRules } from '@/hooks/useAutoFavoriteRules'
 import { useNotifications } from '@/hooks/useNotifications'
-import { checkAutoFavoriteRules } from '@/lib/autoFavoriteUtils'
 
 export const SimpleAutoFavoriteManager: React.FC = () => {
   const { rules, addRule, deleteRule, toggleRule } = useAutoFavoriteRules()
@@ -103,55 +102,6 @@ export const SimpleAutoFavoriteManager: React.FC = () => {
     }
   }
 
-  // 測試自動收藏功能
-  const testAutoFavorite = () => {
-    const testMessage = {
-      id: Date.now(),
-      content: "收購稀有裝備，高價收購",
-      channel: "自由市場",
-      player_name: "測試玩家",
-      player_id: "12345",
-      message_type: "buy" as const,
-      timestamp: new Date().toISOString(),
-      ai_analyzed: false
-    }
-
-    console.log("🧪 測試自動收藏功能")
-    console.log("測試訊息:", testMessage)
-    console.log("當前規則:", rules)
-
-    const { shouldAutoFavorite, matchedRules } = checkAutoFavoriteRules(testMessage, rules)
-
-    console.log("匹配結果:", { shouldAutoFavorite, matchedRules })
-
-    if (shouldAutoFavorite) {
-      // 模擬自動收藏
-      const existingFavorites = JSON.parse(localStorage.getItem("broadcast-favorites") || "[]")
-      const favoriteItem = {
-        ...testMessage,
-        favorited_at: new Date().toISOString(),
-        autoFavorited: true,
-        matchedRule: matchedRules[0]?.rule?.name,
-        matchedKeywords: matchedRules[0]?.matchedKeywords
-      }
-
-      const newFavorites = [favoriteItem, ...existingFavorites]
-      localStorage.setItem("broadcast-favorites", JSON.stringify(newFavorites))
-
-      // 如果啟用了通知，發送測試通知
-      if (notificationsEnabled && canSendNotifications) {
-        sendAutoFavoriteNotification(
-          testMessage.content,
-          matchedRules[0]?.matchedKeywords || [],
-          matchedRules[0]?.rule?.name || '測試規則'
-        )
-      }
-
-      alert(`✅ 測試成功！訊息已自動收藏\n匹配規則: ${matchedRules.map(r => r.rule.name).join(', ')}`)
-    } else {
-      alert("❌ 測試失敗：沒有匹配的規則")
-    }
-  }
 
   if (!isOpen) {
     return (

@@ -10,10 +10,15 @@ export const useAutoFavoriteRules = () => {
   // 從 localStorage 載入規則
   const loadRules = useCallback(() => {
     try {
+      console.log('📥 載入自動收藏規則從 localStorage')
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
         const parsedRules = JSON.parse(stored) as AutoFavoriteRule[]
+        console.log('📋 載入的規則:', parsedRules.map(r => ({ id: r.id, name: r.name, isActive: r.isActive })))
         setRules(parsedRules)
+      } else {
+        console.log('📋 localStorage 中沒有保存的規則')
+        setRules([])
       }
     } catch (error) {
       console.warn('Failed to load auto-favorite rules:', error)
@@ -26,7 +31,20 @@ export const useAutoFavoriteRules = () => {
   // 儲存規則到 localStorage 的輔助函數
   const saveToLocalStorage = (newRules: AutoFavoriteRule[]) => {
     try {
+      console.log('🔄 保存自動收藏規則到 localStorage:', {
+        key: STORAGE_KEY,
+        rulesCount: newRules.length,
+        rules: newRules.map(r => ({ id: r.id, name: r.name, isActive: r.isActive }))
+      })
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newRules))
+      
+      // 驗證保存結果
+      const saved = localStorage.getItem(STORAGE_KEY)
+      const parsed = saved ? JSON.parse(saved) : []
+      console.log('✅ 保存結果驗證:', {
+        savedCount: parsed.length,
+        success: parsed.length === newRules.length
+      })
     } catch (error) {
       console.error('Failed to save auto-favorite rules:', error)
     }
@@ -63,8 +81,11 @@ export const useAutoFavoriteRules = () => {
 
   // 刪除規則
   const deleteRule = useCallback((id: string) => {
+    console.log('🗑️ 刪除自動收藏規則:', id)
     setRules(prevRules => {
+      console.log('📋 刪除前規則列表:', prevRules.map(r => ({ id: r.id, name: r.name })))
       const newRules = prevRules.filter(rule => rule.id !== id)
+      console.log('📋 刪除後規則列表:', newRules.map(r => ({ id: r.id, name: r.name })))
       saveToLocalStorage(newRules)
       return newRules
     })
@@ -109,7 +130,7 @@ export const useAutoFavoriteRules = () => {
   // 初始化時載入規則
   useEffect(() => {
     loadRules()
-  }, [loadRules])
+  }, [])
 
 
   return {
