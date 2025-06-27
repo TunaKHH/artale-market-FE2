@@ -25,14 +25,17 @@ export const SimpleAutoFavoriteManager: React.FC = () => {
   // 載入通知設定
   useEffect(() => {
     const saved = localStorage.getItem('auto-favorite-notifications-enabled')
-    if (saved === 'true' && canSendNotifications) {
-      setNotificationsEnabled(true)
-    }
-  }, [canSendNotifications])
+    setNotificationsEnabled(saved === 'true')
+  }, [])
 
-  // 儲存通知設定
+  // 儲存通知設定 - 使用 ref 避免初始化時觸發
+  const isInitialized = React.useRef(false)
   useEffect(() => {
-    localStorage.setItem('auto-favorite-notifications-enabled', notificationsEnabled.toString())
+    if (isInitialized.current) {
+      localStorage.setItem('auto-favorite-notifications-enabled', notificationsEnabled.toString())
+    } else {
+      isInitialized.current = true
+    }
   }, [notificationsEnabled])
 
   const handleSubmit = (e: React.FormEvent) => {

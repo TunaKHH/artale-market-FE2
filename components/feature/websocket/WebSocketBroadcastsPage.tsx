@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useCallback, useEffect, useMemo } from "react"
-import { Clock, Search, AlertCircle, Copy, Check, X, Bookmark } from "lucide-react"
+import { Clock, Search, AlertCircle, Copy, Check, X, Bookmark, Trash2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -192,6 +192,20 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
       setFavoriteMessages(favorites)
     }
   }, [])
+
+  // 清空所有收藏
+  const clearAllFavorites = useCallback(() => {
+    if (favoriteMessages.length === 0) return
+    
+    const confirmed = confirm(`確定要刪除所有 ${favoriteMessages.length} 條收藏嗎？此操作無法復原。`)
+    
+    if (confirmed) {
+      localStorage.removeItem("broadcast-favorites")
+      setFavoriteMessages([])
+      setFavoriteCount(0)
+      console.log("✅ 已清空所有收藏")
+    }
+  }, [favoriteMessages.length])
 
   // 自動收藏規則管理
   const { rules: autoFavoriteRules, incrementMatchCount, isLoading: isRulesLoading } = useAutoFavoriteRules()
@@ -900,6 +914,24 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
           ) : messageTypeFilter === "favorites" ? (
             // 收藏訊息用傳統列表
             <div className="space-y-4">
+              {/* 收藏頁面頂部工具欄 */}
+              {favoriteMessages.length > 0 && (
+                <div className="flex justify-between items-center p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
+                  <div className="text-sm text-blue-800 dark:text-blue-200">
+                    共有 <span className="font-semibold">{favoriteMessages.length}</span> 條收藏訊息
+                  </div>
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={clearAllFavorites}
+                    className="h-8"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    清空所有收藏
+                  </Button>
+                </div>
+              )}
+              
               {favoriteMessages.map((broadcast) => (
                 <Card
                   key={broadcast.id}
