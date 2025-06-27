@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import type { BroadcastMessage } from "@/lib/api"
+import type { MessageMatchHandler } from '@/lib/types'
 
 // 常數定義
 const MAX_MESSAGES = 1000              // 最大訊息保留數量
 const NEW_MESSAGE_TIMEOUT = 5000       // 新訊息標記超時時間 (ms)
 const CLEANUP_INTERVAL = 2000          // 訊息清理間隔時間 (ms)
+
 
 // WebSocket 連線狀態
 export type WebSocketConnectionState =
@@ -51,6 +53,7 @@ interface UseWebSocketBroadcastsOptions {
   pingInterval?: number
   initialMessageLimit?: number
   enableAutoSubscribe?: boolean
+  onNewMessage?: (message: ExtendedBroadcastMessage) => void
 }
 
 // Hook 返回值類型
@@ -95,6 +98,7 @@ export function useWebSocketBroadcasts({
   pingInterval = 30000,
   initialMessageLimit = 10,
   enableAutoSubscribe = true,
+  onNewMessage,
 }: UseWebSocketBroadcastsOptions = {}): UseWebSocketBroadcastsReturn {
 
   // WebSocket 相關狀態
@@ -177,6 +181,13 @@ export function useWebSocketBroadcasts({
   const handleMessage = useCallback((event: MessageEvent) => {
     try {
       const response: WebSocketResponse = JSON.parse(event.data)
+      
+      // 調試：記錄所有 WebSocket 訊息
+      console.log("📡 收到 WebSocket 訊息:", {
+        type: response.type,
+        hasPayload: !!response.payload,
+        request_id: response.request_id
+      })
 
       // 處理請求回應
       if (response.request_id) {
@@ -197,6 +208,9 @@ export function useWebSocketBroadcasts({
               isNew: true,
               newMessageTimestamp: Date.now()
             }
+
+            // 通知外部處理器（解耦後的回調）
+            onNewMessage?.(newMessage)
 
             setMessages(prev => {
               // 檢查是否已存在相同訊息（去重）
@@ -228,7 +242,15 @@ export function useWebSocketBroadcasts({
       console.error("解析 WebSocket 訊息失敗:", error)
       setError("解析訊息失敗")
     }
-  }, [])
+  }, [onNewMessage])
+
+  // 更新現有 WebSocket 連線的訊息處理器
+  useEffect(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      console.log("🔄 更新 WebSocket 訊息處理器")
+      wsRef.current.onmessage = handleMessage
+    }
+  }, [handleMessage])
 
   // 啟動心跳檢測
   const startPing = useCallback(() => {

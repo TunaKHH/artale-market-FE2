@@ -1,9 +1,8 @@
-// 🚀 性能優化：主要組件導出（使用優化版本）
-export { default as WebSocketBroadcastsPage } from './OptimizedBroadcastsPage'
-export { default as OptimizedBroadcastsPage } from './OptimizedBroadcastsPage'
+// 🚀 主要組件導出（使用包含自動收藏功能的版本）
+export { WebSocketBroadcastsPage } from './WebSocketBroadcastsPage'
 
-// 原始組件（保留向後兼容性）
-export { WebSocketBroadcastsPage as LegacyWebSocketBroadcastsPage } from './WebSocketBroadcastsPage'
+// 優化版本（保留向後兼容性）
+export { default as OptimizedBroadcastsPage } from './OptimizedBroadcastsPage'
 
 // 子組件導出
 export { default as SearchSection } from './SearchSection'

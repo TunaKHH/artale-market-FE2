@@ -44,6 +44,20 @@ export interface FavoriteMessage {
   timestamp: string
   messageType: string
   addedAt: string
+  autoFavorited?: boolean
+  matchedRule?: string
+  matchedKeywords?: string[]
+}
+
+export interface AutoFavoriteRule {
+  id: string
+  name: string
+  keywords: string[]
+  messageTypes?: ('buy' | 'sell' | 'team' | 'other')[]
+  matchMode: 'contains' | 'exact' | 'regex'
+  isActive: boolean
+  createdAt: string
+  matchCount: number
 }
 
 export interface AnalyticsEvent {
@@ -82,6 +96,31 @@ export interface BroadcastCardProps {
   onFavoriteChange?: () => void
   analytics?: AnalyticsEvent
 }
+
+// 匹配事件相關型別
+export interface MatchResult {
+  matched: boolean
+  matchedKeywords: string[]
+  rule: AutoFavoriteRule
+}
+
+export interface MessageMatchEvent {
+  message: BroadcastMessageWithFavorite | FavoriteMessage
+  matchResults: MatchResult[]
+}
+
+// 匹配處理器事件類型
+export interface MatchingProcessorEvent {
+  type: 'message_matched' | 'match_processed' | 'auto_favorite_triggered'
+  message: BroadcastMessageWithFavorite | FavoriteMessage
+  matchResults?: MatchResult[]
+  error?: string
+}
+
+// 匹配處理器回調函數類型
+export type MessageMatchHandler = (message: BroadcastMessageWithFavorite | FavoriteMessage) => void | Promise<void>
+export type MatchEventHandler = (event: MessageMatchEvent) => void | Promise<void>
+export type MatchingProcessorEventHandler = (event: MatchingProcessorEvent) => void
 
 // 通用回調型別
 export type EventCallback = () => void

@@ -10,6 +10,10 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useSearchDebounce } from "@/hooks/useDebounce"
 import { useWebSocketBroadcasts } from "@/hooks/useWebSocketBroadcasts"
+import { useAutoFavoriteRules } from "@/hooks/useAutoFavoriteRules"
+import { useNotifications } from "@/hooks/useNotifications"
+import { useMatchingProcessor } from "@/hooks/useMatchingProcessor"
+import { SimpleAutoFavoriteManager } from "@/components/feature/auto-favorite"
 import { InfiniteMessageList } from "./InfiniteMessageList"
 import { MessageItem, MessageFavoriteButton } from "./MessageItem"
 import { ConnectionStatus } from "./ConnectionStatus"
@@ -18,12 +22,16 @@ import { WebSocketToast } from "./WebSocketToast"
 import { HighlightText } from "@/components/common"
 import { useRouter, useSearchParams } from "next/navigation"
 import type { BroadcastMessage } from "@/lib/api"
+import type { MessageMatchEvent, MatchingProcessorEvent } from "@/lib/types"
 
 // 擴展訊息類型
 interface ExtendedBroadcastMessage extends BroadcastMessage {
   isNew?: boolean
   newMessageTimestamp?: number
   favorited_at?: string
+  autoFavorited?: boolean
+  matchedRule?: string
+  matchedKeywords?: string[]
 }
 
 // 時間格式化組件
@@ -176,6 +184,166 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
   const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(-1)
   const [mounted, setMounted] = useState(false)
 
+  // 更新收藏數量（提前定義）
+  const updateFavoriteCount = useCallback(() => {
+    if (typeof window !== "undefined") {
+      const favorites = JSON.parse(localStorage.getItem("broadcast-favorites") || "[]")
+      setFavoriteCount(favorites.length)
+      setFavoriteMessages(favorites)
+    }
+  }, [])
+
+  // 自動收藏規則管理
+  const { rules: autoFavoriteRules, incrementMatchCount, isLoading: isRulesLoading } = useAutoFavoriteRules()
+  
+  // 調試：監控規則載入狀態
+  useEffect(() => {
+    console.log("📋 自動收藏規則狀態:", {
+      isLoading: isRulesLoading,
+      rulesCount: autoFavoriteRules.length,
+      mounted: mounted
+    })
+  }, [isRulesLoading, autoFavoriteRules.length, mounted])
+
+  // 通知功能
+  const { sendAutoFavoriteNotification, canSendNotifications } = useNotifications()
+
+  // 通知啟用狀態（響應式）
+  const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(false)
+  
+  // 監聽通知設定變化
+  useEffect(() => {
+    const checkNotificationSetting = () => {
+      if (typeof window !== 'undefined') {
+        const enabled = localStorage.getItem('auto-favorite-notifications-enabled') === 'true'
+        setIsNotificationsEnabled(enabled)
+      }
+    }
+    
+    checkNotificationSetting()
+    
+    // 監聽 localStorage 變化
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'auto-favorite-notifications-enabled') {
+        checkNotificationSetting()
+      }
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
+  // 自動收藏處理函數
+  const handleAutoFavorite = useCallback((message: BroadcastMessage, matchedRules: Array<{ rule: any; matchedKeywords: string[] }>) => {
+    try {
+      // 檢查是否已經收藏
+      const existingFavorites = JSON.parse(localStorage.getItem("broadcast-favorites") || "[]")
+      const alreadyFavorited = existingFavorites.some((fav: any) => fav.id === message.id)
+
+      if (alreadyFavorited) {
+        console.log("訊息已收藏，跳過自動收藏:", message.id)
+        return
+      }
+
+      // 加入收藏，並標記為自動收藏
+      const favoriteItem = {
+        ...message,
+        favorited_at: new Date().toISOString(),
+        autoFavorited: true,
+        matchedRule: matchedRules[0]?.rule?.name,
+        matchedKeywords: matchedRules[0]?.matchedKeywords
+      }
+
+      const newFavorites = [favoriteItem, ...existingFavorites]
+      localStorage.setItem("broadcast-favorites", JSON.stringify(newFavorites))
+
+      // 更新匹配計數
+      matchedRules.forEach(({ rule }) => {
+        incrementMatchCount(rule.id)
+      })
+
+      // 更新收藏計數
+      updateFavoriteCount()
+
+      // 發送推播通知（動態檢查設定）
+      const currentNotificationEnabled = typeof window !== 'undefined' 
+        ? localStorage.getItem('auto-favorite-notifications-enabled') === 'true'
+        : false
+        
+      console.log("🔔 檢查推播通知條件:", {
+        canSendNotifications,
+        isNotificationsEnabled,
+        currentNotificationEnabled,
+        documentHidden: typeof document !== 'undefined' ? document.hidden : 'unknown',
+        visibilityState: typeof document !== 'undefined' ? document.visibilityState : 'unknown'
+      })
+
+      if (canSendNotifications && currentNotificationEnabled) {
+        const firstMatch = matchedRules[0]
+        if (firstMatch) {
+          console.log("📱 發送自動收藏通知:", {
+            content: message.content.slice(0, 50),
+            keywords: firstMatch.matchedKeywords,
+            ruleName: firstMatch.rule.name
+          })
+
+          sendAutoFavoriteNotification(
+            message.content,
+            firstMatch.matchedKeywords,
+            firstMatch.rule.name
+          )
+        }
+      } else {
+        console.log("❌ 無法發送通知：權限不足或瀏覽器不支援")
+      }
+
+      console.log("✅ 自動收藏訊息:", message.content, "匹配規則:", matchedRules.map(r => r.rule.name).join(", "))
+    } catch (error) {
+      console.error("自動收藏失敗:", error)
+    }
+  }, [incrementMatchCount, updateFavoriteCount, canSendNotifications, sendAutoFavoriteNotification, isNotificationsEnabled])
+
+  // 匹配處理器 - 處理匹配事件
+  const { processAndHandle } = useMatchingProcessor({
+    rules: autoFavoriteRules,
+    onMatchEvent: useCallback((event: MessageMatchEvent) => {
+      console.log("🎯 收到匹配事件:", event)
+      
+      // 轉換匹配結果格式以適配原有的自動收藏函數
+      const matchedRules = event.matchResults.map(result => ({
+        rule: result.rule,
+        matchedKeywords: result.matchedKeywords
+      }))
+      
+      // 觸發自動收藏
+      handleAutoFavorite(event.message as BroadcastMessage, matchedRules)
+    }, [handleAutoFavorite]),
+    onProcessorEvent: useCallback((event: MatchingProcessorEvent) => {
+      console.log("🔄 匹配處理器事件:", event)
+    }, [])
+  })
+
+  // 處理新訊息的回調
+  const handleNewMessage = useCallback((message: ExtendedBroadcastMessage) => {
+    console.log("📨 收到新訊息:", message.id)
+    
+    // 檢查是否有規則設定，如果沒有規則就不進行匹配處理
+    if (!autoFavoriteRules || autoFavoriteRules.length === 0) {
+      console.log("⏭️ 跳過匹配處理：沒有設定任何自動收藏規則")
+      return
+    }
+
+    const activeRules = autoFavoriteRules.filter(rule => rule.isActive)
+    if (activeRules.length === 0) {
+      console.log("⏭️ 跳過匹配處理：沒有啟用的規則")
+      return
+    }
+
+    console.log("🔄 準備處理匹配，啟用規則數量:", activeRules.length)
+    
+    // 將新訊息傳遞給匹配處理器
+    processAndHandle(message)
+  }, [processAndHandle, autoFavoriteRules])
 
   // 防抖搜尋
   const { debouncedSearchTerm, isSearching } = useSearchDebounce(searchInput, 300)
@@ -203,8 +371,35 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
   } = useWebSocketBroadcasts({
     autoConnect: true,
     initialMessageLimit: 50,
-    enableAutoSubscribe: true
+    enableAutoSubscribe: true,
+    onNewMessage: handleNewMessage
   })
+
+  // 調試：監控規則變化
+  useEffect(() => {
+    console.log("🔄 WebSocketBroadcastsPage 自動收藏規則更新:", {
+      timestamp: new Date().toISOString(),
+      rulesCount: autoFavoriteRules.length,
+      rules: autoFavoriteRules.map(r => ({
+        id: r.id,
+        name: r.name,
+        keywords: r.keywords,
+        messageTypes: r.messageTypes,
+        matchMode: r.matchMode,
+        isActive: r.isActive,
+        matchCount: r.matchCount
+      }))
+    })
+    
+    // 檢查是否有活躍的規則
+    const activeRules = autoFavoriteRules.filter(r => r.isActive)
+    console.log("📊 WebSocketBroadcastsPage 活躍規則統計:", {
+      totalRules: autoFavoriteRules.length,
+      activeRules: activeRules.length,
+      inactiveRules: autoFavoriteRules.length - activeRules.length,
+      activeRuleNames: activeRules.map(r => r.name)
+    })
+  }, [autoFavoriteRules])
 
   // 客戶端掛載檢測
   useEffect(() => {
@@ -269,14 +464,7 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
     }
   }, [messages]) // 只依賴原始的 messages，避免循環依賴
 
-  // 更新收藏數量
-  const updateFavoriteCount = () => {
-    if (typeof window !== "undefined") {
-      const favorites = JSON.parse(localStorage.getItem("broadcast-favorites") || "[]")
-      setFavoriteCount(favorites.length)
-      setFavoriteMessages(favorites)
-    }
-  }
+  // updateFavoriteCount 已在上方定義
 
   // 載入搜尋歷史
   const loadSearchHistory = () => {
@@ -467,7 +655,9 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <h1 className="text-3xl font-bold text-foreground">廣播訊息</h1>
-
+            </div>
+            <div className="flex items-center space-x-2">
+              <SimpleAutoFavoriteManager />
             </div>
           </div>
 
@@ -735,7 +925,14 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
                           {broadcast.favorited_at && (
                             <div className="flex items-center text-xs text-blue-600 dark:text-blue-400">
                               <Bookmark className="w-3 h-3 mr-1 fill-current" />
-                              <span>收藏於 {new Date(broadcast.favorited_at).toLocaleDateString("zh-TW")}</span>
+                              <span>
+                                {broadcast.autoFavorited ? "自動收藏於" : "收藏於"} {new Date(broadcast.favorited_at).toLocaleDateString("zh-TW")}
+                              </span>
+                              {broadcast.autoFavorited && broadcast.matchedRule && (
+                                <span className="ml-2 px-1.5 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded text-xs">
+                                  規則: {broadcast.matchedRule}
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>
