@@ -1,5 +1,18 @@
 import { sendGAEvent } from '@next/third-parties/google'
 
+// 安全的 GA 事件發送函數
+const safeSendGAEvent = (eventName: string, eventParameters?: Record<string, any>) => {
+  try {
+    // 只有在有 GA ID 時才發送事件
+    if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_GA_ID) {
+      sendGAEvent('event', eventName, eventParameters)
+    }
+  } catch (error) {
+    // 靜默處理錯誤，避免影響用戶體驗
+    console.warn('Analytics event failed:', error)
+  }
+}
+
 // 使用者行為追蹤介面
 interface UserSession {
   sessionId: string
@@ -94,7 +107,7 @@ export const useAnalytics = () => {
       interactions: session.interactions + 1
     })
 
-    sendGAEvent('event', 'search', {
+    safeSendGAEvent('search', {
       search_term: query,
       message_type: messageType || 'all',
       result_count: resultCount || 0,
@@ -107,7 +120,7 @@ export const useAnalytics = () => {
 
     // 追蹤無結果搜尋
     if ((resultCount || 0) === 0) {
-      sendGAEvent('event', 'search_no_results', {
+      safeSendGAEvent('search_no_results', {
         search_term: query,
         message_type: messageType || 'all',
         session_id: session.sessionId,
@@ -118,7 +131,7 @@ export const useAnalytics = () => {
 
   // 追蹤搜尋後的用戶行為
   const trackSearchInteraction = (action: 'click' | 'copy' | 'share', searchTerm: string, itemId?: string) => {
-    sendGAEvent('event', 'search_interaction', {
+    safeSendGAEvent('search_interaction', {
       interaction_type: action,
       search_term: searchTerm,
       item_id: itemId
@@ -127,7 +140,7 @@ export const useAnalytics = () => {
 
   // 追蹤廣播篩選
   const trackFilter = (filterType: string, filterValue: string) => {
-    sendGAEvent('event', 'filter_broadcasts', {
+    safeSendGAEvent('filter_broadcasts', {
       filter_type: filterType,
       filter_value: filterValue
     })
@@ -144,7 +157,7 @@ export const useAnalytics = () => {
       interactions: session.interactions + 1
     })
 
-    sendGAEvent('event', 'page_view', {
+    safeSendGAEvent('page_view', {
       page_title: page,
       session_id: session.sessionId,
       page_sequence: session.pageViews + 1,
@@ -158,7 +171,7 @@ export const useAnalytics = () => {
 
   // 追蹤 API 使用情況
   const trackApiUsage = (endpoint: string, success: boolean) => {
-    sendGAEvent('event', 'api_call', {
+    safeSendGAEvent('api_call', {
       api_endpoint: endpoint,
       success: success.toString()
     })
@@ -166,7 +179,7 @@ export const useAnalytics = () => {
 
   // 追蹤錯誤
   const trackError = (errorType: string, errorMessage: string) => {
-    sendGAEvent('event', 'error', {
+    safeSendGAEvent('error', {
       error_type: errorType,
       error_message: errorMessage
     })
@@ -180,7 +193,7 @@ export const useAnalytics = () => {
       interactions: session.interactions + 1
     })
 
-    sendGAEvent('event', 'user_action', {
+    safeSendGAEvent('user_action', {
       action_type: action,
       action_category: category,
       session_id: session.sessionId,
@@ -194,7 +207,7 @@ export const useAnalytics = () => {
   const trackTimeSpent = (page: string, timeSpent: number) => {
     const session = getUserSession()
 
-    sendGAEvent('event', 'time_on_page', {
+    safeSendGAEvent('time_on_page', {
       page_title: page,
       time_spent_seconds: timeSpent,
       session_id: session.sessionId,
