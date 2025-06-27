@@ -21,6 +21,7 @@ export const SimpleAutoFavoriteManager: React.FC = () => {
   const [newKeyword, setNewKeyword] = useState('')
   const [notificationsEnabled, setNotificationsEnabled] = useState(false)
 
+
   // 載入通知設定
   useEffect(() => {
     const saved = localStorage.getItem('auto-favorite-notifications-enabled')
@@ -34,17 +35,25 @@ export const SimpleAutoFavoriteManager: React.FC = () => {
     localStorage.setItem('auto-favorite-notifications-enabled', notificationsEnabled.toString())
   }, [notificationsEnabled])
 
-  const handleAddRule = () => {
-    if (newKeyword.trim()) {
-      addRule({
-        name: `關鍵字: ${newKeyword.trim()}`,
-        keywords: [newKeyword.trim()],
-        messageTypes: [],
-        matchMode: 'contains',
-        isActive: true
-      })
-      setNewKeyword('')
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    const trimmedKeyword = newKeyword.trim()
+    
+    if (!trimmedKeyword) {
+      return
     }
+    
+    console.log("📝 表單提交，創建規則:", trimmedKeyword)
+    
+    addRule({
+      name: `關鍵字: ${trimmedKeyword}`,
+      keywords: [trimmedKeyword],
+      messageTypes: [],
+      matchMode: 'contains',
+      isActive: true
+    })
+    setNewKeyword('')
   }
 
   const handleDeleteRule = (id: string) => {
@@ -162,17 +171,17 @@ export const SimpleAutoFavoriteManager: React.FC = () => {
 
         <div className="space-y-4">
           {/* 新增規則 */}
-          <div className="flex gap-2">
+          <form onSubmit={handleSubmit} className="flex gap-2">
             <Input
               placeholder="輸入關鍵字..."
               value={newKeyword}
               onChange={(e) => setNewKeyword(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddRule()}
+              required
             />
-            <Button size="sm" onClick={handleAddRule}>
+            <Button type="submit" size="sm">
               <Plus className="w-4 h-4" />
             </Button>
-          </div>
+          </form>
 
           {/* 規則列表 */}
           <div className="space-y-2 max-h-60 overflow-y-auto">

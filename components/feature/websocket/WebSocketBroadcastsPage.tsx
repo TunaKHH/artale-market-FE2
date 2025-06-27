@@ -326,6 +326,11 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
   // 處理新訊息的回調
   const handleNewMessage = useCallback((message: ExtendedBroadcastMessage) => {
     console.log("📨 收到新訊息:", message.id)
+    console.log("📋 當前規則狀態:", {
+      autoFavoriteRules,
+      rulesCount: autoFavoriteRules?.length || 0,
+      rules: autoFavoriteRules?.map(r => ({ id: r.id, name: r.name, isActive: r.isActive }))
+    })
     
     // 檢查是否有規則設定，如果沒有規則就不進行匹配處理
     if (!autoFavoriteRules || autoFavoriteRules.length === 0) {
@@ -334,6 +339,12 @@ export function WebSocketBroadcastsPage({ className }: WebSocketBroadcastsPagePr
     }
 
     const activeRules = autoFavoriteRules.filter(rule => rule.isActive)
+    console.log("📊 規則統計:", {
+      totalRules: autoFavoriteRules.length,
+      activeRules: activeRules.length,
+      inactiveRules: autoFavoriteRules.length - activeRules.length
+    })
+    
     if (activeRules.length === 0) {
       console.log("⏭️ 跳過匹配處理：沒有啟用的規則")
       return

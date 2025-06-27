@@ -23,18 +23,14 @@ export const useAutoFavoriteRules = () => {
     }
   }, [])
 
-  // 儲存規則到 localStorage
-  const saveRules = useCallback((newRules: AutoFavoriteRule[]) => {
-    console.log("🔄 儲存規則到 localStorage", newRules);
-
+  // 儲存規則到 localStorage 的輔助函數
+  const saveToLocalStorage = (newRules: AutoFavoriteRule[]) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newRules))
-      setRules(newRules)
-      console.log("✅ 規則已成功儲存，數量:", newRules.length);
     } catch (error) {
       console.error('Failed to save auto-favorite rules:', error)
     }
-  }, [])
+  }
 
   // 新增規則
   const addRule = useCallback((rule: Omit<AutoFavoriteRule, 'id' | 'createdAt' | 'matchCount'>) => {
@@ -45,41 +41,56 @@ export const useAutoFavoriteRules = () => {
       matchCount: 0
     }
 
-    const newRules = [...rules, newRule]
-    saveRules(newRules)
+    setRules(prevRules => {
+      const newRules = [...prevRules, newRule]
+      saveToLocalStorage(newRules)
+      return newRules
+    })
+    
     return newRule
-  }, [rules, saveRules])
+  }, [])
 
   // 更新規則
   const updateRule = useCallback((id: string, updates: Partial<AutoFavoriteRule>) => {
-    const newRules = rules.map(rule =>
-      rule.id === id ? { ...rule, ...updates } : rule
-    )
-    saveRules(newRules)
-  }, [rules, saveRules])
+    setRules(prevRules => {
+      const newRules = prevRules.map(rule =>
+        rule.id === id ? { ...rule, ...updates } : rule
+      )
+      saveToLocalStorage(newRules)
+      return newRules
+    })
+  }, [])
 
   // 刪除規則
   const deleteRule = useCallback((id: string) => {
-    console.log("🗑️ 刪除規則:", id)
-    console.log("📋 刪除前規則數量:", rules.length)
-    const newRules = rules.filter(rule => rule.id !== id)
-    console.log("📋 刪除後規則數量:", newRules.length)
-    console.log("📋 新的規則列表:", newRules.map(r => ({ id: r.id, name: r.name })))
-    saveRules(newRules)
-  }, [rules, saveRules])
+    setRules(prevRules => {
+      const newRules = prevRules.filter(rule => rule.id !== id)
+      saveToLocalStorage(newRules)
+      return newRules
+    })
+  }, [])
 
   // 切換規則啟用狀態
   const toggleRule = useCallback((id: string) => {
-    updateRule(id, { isActive: !rules.find(r => r.id === id)?.isActive })
-  }, [rules, updateRule])
+    setRules(prevRules => {
+      const newRules = prevRules.map(rule =>
+        rule.id === id ? { ...rule, isActive: !rule.isActive } : rule
+      )
+      saveToLocalStorage(newRules)
+      return newRules
+    })
+  }, [])
 
   // 增加匹配計數
   const incrementMatchCount = useCallback((id: string) => {
-    const rule = rules.find(r => r.id === id)
-    if (rule) {
-      updateRule(id, { matchCount: rule.matchCount + 1 })
-    }
-  }, [rules, updateRule])
+    setRules(prevRules => {
+      const newRules = prevRules.map(rule =>
+        rule.id === id ? { ...rule, matchCount: rule.matchCount + 1 } : rule
+      )
+      saveToLocalStorage(newRules)
+      return newRules
+    })
+  }, [])
 
   // 獲取啟用的規則
   const getActiveRules = useCallback(() => {
@@ -88,14 +99,18 @@ export const useAutoFavoriteRules = () => {
 
   // 重置所有匹配計數
   const resetMatchCounts = useCallback(() => {
-    const newRules = rules.map(rule => ({ ...rule, matchCount: 0 }))
-    saveRules(newRules)
-  }, [rules, saveRules])
+    setRules(prevRules => {
+      const newRules = prevRules.map(rule => ({ ...rule, matchCount: 0 }))
+      saveToLocalStorage(newRules)
+      return newRules
+    })
+  }, [])
 
   // 初始化時載入規則
   useEffect(() => {
     loadRules()
   }, [loadRules])
+
 
   return {
     rules,
