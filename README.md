@@ -50,15 +50,6 @@
    cp .env.example .env.local
    ```
 
-   然後編輯 `.env.local` 文件，設定以下變數：
-   ```
-   # API 伺服器位址
-   NEXT_PUBLIC_API_URL=https://your-api-server.com
-
-   # 環境控制 (開發環境設為 false)
-   NEXT_PUBLIC_IS_PRODUCTION=false
-   ```
-
 5. 啟動開發伺服器：
    ```bash
    pnpm dev
