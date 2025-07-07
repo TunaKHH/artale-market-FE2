@@ -25,7 +25,7 @@
 ### 前置需求
 
 - Node.js 18+
-- pnpm 9.0+
+- pnpm 9.0+ (如果沒有安裝，可以使用 `npm install -g pnpm` 安裝)
 
 ### 安裝
 
@@ -35,12 +35,17 @@
    cd artale-market-FE2
    ```
 
-2. 安裝依賴：
+2. 安裝 pnpm (如果尚未安裝)：
+   ```bash
+   npm install -g pnpm
+   ```
+
+3. 安裝依賴：
    ```bash
    pnpm install
    ```
 
-3. 設定環境變數：
+4. 設定環境變數：
    ```bash
    cp .env.example .env.local
    ```
@@ -54,12 +59,12 @@
    NEXT_PUBLIC_IS_PRODUCTION=false
    ```
 
-4. 啟動開發伺服器：
+5. 啟動開發伺服器：
    ```bash
    pnpm dev
    ```
 
-5. 在瀏覽器中打開 [http://localhost:3000](http://localhost:3000)
+6. 在瀏覽器中打開 [http://localhost:3000](http://localhost:3000)
 
 ### 可用腳本
 
