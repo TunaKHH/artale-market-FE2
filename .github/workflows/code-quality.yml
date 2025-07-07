@@ -14,16 +14,16 @@ jobs:
     - name: Checkout 程式碼
       uses: actions/checkout@v4
 
+    - name: 安裝 pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 9.0.0
+
     - name: 設定 Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: 'pnpm'
-
-    - name: 安裝 pnpm
-      uses: pnpm/action-setup@v2
-      with:
-        version: 9.0.0
 
     - name: 安裝依賴
       run: pnpm install --frozen-lockfile
