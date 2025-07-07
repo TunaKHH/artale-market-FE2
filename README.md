@@ -4,7 +4,8 @@
 這裡訪問：https://artale-love.com/
 
 ## 預覽畫面
-![image](https://github.com/user-attachments/assets/442afc50-a0bc-4912-8c2f-afa53bd0013b)
+![image](https://github.com/user-attachments/assets/e9bc426e-cd9b-4def-a8eb-b6b46f918134)
+
 
 
 ## 功能特色
